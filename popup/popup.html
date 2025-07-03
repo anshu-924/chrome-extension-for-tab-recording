@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Meet Recorder</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Setup Mode (Before Recording) -->
+    <div id="setupMode" class="mode-panel">
+      <header class="header">
+        <div class="header-icon">🎥</div>
+        <h1>Google Meet Recorder</h1>
+        <div class="status-badge" id="statusBadge">Ready</div>
+      </header>
+
+      <main class="setup-content">
+        <!-- Recording Type Section (Hidden - Always Tab Recording) -->
+        <section class="section" style="display: none;">
+          <h3>Recording Source</h3>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="recordingType" value="tab" id="tabRecording" checked>
+              <div class="radio-content">
+                <div class="radio-title">📱 Browser Tab</div>
+                <div class="radio-subtitle">Record current or selected tab</div>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <!-- Tab Selection Section (Hidden - Always Current Tab) -->
+        <section class="section" id="tabSelectionSection" style="display: none;">
+          <h3>Select Tab to Record</h3>
+          <select id="tabSelector" class="dropdown">
+            <option value="">Loading tabs...</option>
+          </select>
+          <button id="refreshTabs" class="link-btn">🔄 Refresh</button>
+        </section>
+
+        <!-- Current Tab Info -->
+        <section class="section">
+          <h3>Recording Current Tab</h3>
+          <div class="current-tab-info">
+            <div class="tab-indicator">
+              <span class="tab-icon">📱</span>
+              <span class="tab-text">Current active tab will be recorded</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Audio Options -->
+        <section class="section">
+          <h3>Audio Settings</h3>
+          <div class="toggle-group">
+            <label class="toggle-option">
+              <input type="checkbox" id="deviceAudioToggle" checked>
+              <div class="toggle-slider"></div>
+              <div class="toggle-content">
+                <div class="toggle-title">Device Audio</div>
+                <div class="toggle-subtitle">System sounds & meeting audio</div>
+              </div>
+            </label>
+            
+            <label class="toggle-option">
+              <input type="checkbox" id="microphoneToggle">
+              <div class="toggle-slider"></div>
+              <div class="toggle-content">
+                <div class="toggle-title">Microphone</div>
+                <div class="toggle-subtitle">Your voice narration</div>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <!-- Video Quality Section (Hidden - Always 720p) -->
+        <section class="section" style="display: none;">
+          <h3>Video Quality</h3>
+          <div class="quality-selector">
+            <label class="quality-option">
+              <input type="radio" name="videoQuality" value="720p" checked>
+              <div class="quality-content">
+                <div class="quality-title">720p HD</div>
+                <div class="quality-subtitle">Good quality, smaller file</div>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <!-- Start Recording Button -->
+        <button id="startRecordingBtn" class="primary-btn">
+          <span class="btn-icon">●</span>
+          Start Recording
+        </button>
+      </main>
+    </div>
+
+    <!-- Recording Mode (During Recording) -->
+    <div id="recordingMode" class="mode-panel" style="display: none;">
+      <header class="recording-header">
+        <div class="recording-indicator">
+          <div class="rec-dot"></div>
+          <span>RECORDING</span>
+        </div>
+        <div class="recording-time" id="recordingTimer">00:00</div>
+      </header>
+
+      <main class="recording-content">
+        <div class="recording-info">
+          <div class="recording-type" id="recordingTypeDisplay">Browser Tab</div>
+          <div class="recording-quality" id="recordingQualityDisplay">720p</div>
+          <div class="recording-size" id="recordingSizeDisplay">~0 MB</div>
+        </div>
+
+        <div class="recording-controls">
+          <button id="stopRecordingBtn" class="control-btn stop-btn">
+            <span class="btn-icon">⏹️</span>
+            <span class="btn-text">Stop Recording</span>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <!-- Recording Complete Mode (After Recording) -->
+    <div id="completeMode" class="mode-panel" style="display: none;">
+      <header class="complete-header">
+        <div class="complete-icon">✅</div>
+        <h2>Recording Complete</h2>
+      </header>
+
+      <main class="complete-content">
+        <div class="complete-actions">
+          <button id="newRecordingBtn" class="primary-btn">
+            <span class="btn-icon">🎬</span>
+            New Recording
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <!-- Loading/Error States -->
+    <div id="loadingOverlay" class="overlay" style="display: none;">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Starting recording...</div>
+    </div>
+
+    <div id="errorOverlay" class="overlay error-overlay" style="display: none;">
+      <div class="error-icon">⚠️</div>
+      <div class="error-message" id="errorMessage">Something went wrong</div>
+      <button id="dismissErrorBtn" class="link-btn">Dismiss</button>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+file structure
+
+chrome-screen-recorder/
+├── manifest.json              # Extension configuration
+├── background.js              # Service worker
+├── offscreen.html/.js         # MediaRecorder handling
+├── popup/
+│   ├── popup.html             # Main UI
+│   ├── popup.js               # UI logic
+│   └── popup.css              # Styling
+├── content/
+│   ├── meet-injector.js       # Google Meet specific features
+│   └── content.css            # Injected styles        
+└── icons/                     # Extension icons
+└── preview.html 
+└── preview.js
+
+

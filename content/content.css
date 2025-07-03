@@ -1,0 +1,195 @@
+/* Google Meet Recorder Content Script Styles */
+
+#meet-recorder-indicator {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  z-index: 999999 !important;
+  font-family: 'Google Sans', 'Roboto', Arial, sans-serif !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.recorder-indicator {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 24px !important;
+  padding: 8px 16px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+}
+
+.recorder-indicator:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+}
+
+.recorder-indicator.ready {
+  border-color: rgba(79, 70, 229, 0.2) !important;
+}
+
+.recorder-indicator.recording {
+  background: rgba(239, 68, 68, 0.95) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: white !important;
+}
+
+.indicator-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  transition: all 0.2s ease !important;
+}
+
+.recorder-indicator.recording .indicator-dot {
+  background: white !important;
+  animation: recording-pulse 1.5s ease-in-out infinite !important;
+}
+
+@keyframes recording-pulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.6; 
+    transform: scale(1.2);
+  }
+}
+
+.indicator-text {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #374151 !important;
+  transition: color 0.2s ease !important;
+}
+
+.recorder-indicator.recording .indicator-text {
+  color: white !important;
+}
+
+.indicator-btn, .close-btn {
+  background: none !important;
+  border: none !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.close-btn {
+  font-size: 12px !important;
+  opacity: 0.7 !important;
+  margin-left: 4px !important;
+}
+
+.indicator-btn:hover, .close-btn:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+  transform: scale(1.1) !important;
+}
+
+.close-btn:hover {
+  opacity: 1 !important;
+}
+
+.recorder-indicator.recording .indicator-btn:hover,
+.recorder-indicator.recording .close-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  #meet-recorder-indicator {
+    top: 10px !important;
+    right: 10px !important;
+  }
+  
+  .recorder-indicator {
+    padding: 6px 12px !important;
+  }
+  
+  .indicator-text {
+    font-size: 11px !important;
+  }
+  
+  .indicator-btn {
+    font-size: 12px !important;
+  }
+}
+
+/* Hide indicator when Meet is in fullscreen mode */
+body.fullscreen #meet-recorder-indicator,
+html.fullscreen #meet-recorder-indicator,
+:-webkit-full-screen #meet-recorder-indicator,
+:-moz-full-screen #meet-recorder-indicator,
+:fullscreen #meet-recorder-indicator {
+  display: none !important;
+}
+
+/* Ensure indicator doesn't interfere with Meet UI */
+.recorder-indicator {
+  pointer-events: auto !important;
+}
+
+/* Animation for indicator appearance */
+#meet-recorder-indicator {
+  animation: indicator-slide-in 0.3s ease-out !important;
+}
+
+@keyframes indicator-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .recorder-indicator {
+    border-width: 2px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  .recorder-indicator.ready {
+    border-color: #4f46e5 !important;
+  }
+  
+  .recorder-indicator.recording {
+    border-color: #ef4444 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .recorder-indicator,
+  .indicator-dot,
+  .indicator-text,
+  .indicator-btn {
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  .recorder-indicator.recording .indicator-dot {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  
+  #meet-recorder-indicator {
+    animation: none !important;
+  }
+}
