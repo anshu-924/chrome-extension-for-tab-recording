@@ -3,7 +3,8 @@ file structure
 chrome-screen-recorder/
 ├── manifest.json              # Extension configuration
 ├── background.js              # Service worker
-├── offscreen.html/.js         # MediaRecorder handling
+├── offscreen.html/.js                     # MediaRecorder handling
+├── microphone-permission.html/.js         # injecting iframe into current file
 ├── popup/
 │   ├── popup.html             # Main UI
 │   ├── popup.js               # UI logic

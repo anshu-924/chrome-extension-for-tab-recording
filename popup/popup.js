@@ -532,6 +532,13 @@ async startRecording() {
       currentTabId: null,
       recordingStartTime: null
     };
+    
+    // Always reset microphone to false when starting new recording
+    if (this.microphoneToggle) {
+      this.microphoneToggle.checked = false;
+      this.updateMicrophoneToggleState('default');
+    }
+    
     this.switchToSetupMode();
   }
 
@@ -541,7 +548,7 @@ async startRecording() {
         recordingType: 'tab', // Always tab recording
         videoQuality: '720p', // Always 720p
         includeDeviceAudio: this.deviceAudioToggle ? this.deviceAudioToggle.checked : true,
-        includeMicrophone: this.microphoneToggle ? this.microphoneToggle.checked : false
+        // Note: We don't save microphone setting to ensure it's always false on popup open
       };
       
       await chrome.storage.local.set(settings);
@@ -558,7 +565,7 @@ async startRecording() {
         recordingType: 'tab',
         videoQuality: '720p',
         includeDeviceAudio: true,
-        includeMicrophone: false
+        // Don't load microphone setting - always start with false
       });
       
       // Apply settings to UI - tab recording is always selected (no UI change needed)
@@ -568,13 +575,11 @@ async startRecording() {
         this.deviceAudioToggle.checked = settings.includeDeviceAudio;
       }
       
+      // Always set microphone to false on popup open
       if (this.microphoneToggle) {
-        this.microphoneToggle.checked = settings.includeMicrophone;
-        
-        // Check microphone permission status if it was previously enabled
-        if (settings.includeMicrophone) {
-          await this.checkMicrophonePermissionStatus();
-        }
+        this.microphoneToggle.checked = false;
+        this.updateMicrophoneToggleState('default');
+        console.log('Microphone access set to false by default');
       }
       
     } catch (error) {
@@ -583,27 +588,9 @@ async startRecording() {
   }
 
   async checkMicrophonePermissionStatus() {
-    try {
-      // Check permission via iframe approach
-      const response = await chrome.runtime.sendMessage({ 
-        action: 'checkMicrophoneStatus' 
-      });
-      
-      if (response && response.hasPermission) {
-        this.updateMicrophoneToggleState('granted');
-      } else if (response && response.hasPermission === false) {
-        this.microphoneToggle.checked = false;
-        this.updateMicrophoneToggleState('denied');
-      } else {
-        // Permission status unknown - will be requested when needed
-        this.updateMicrophoneToggleState('default');
-      }
-      
-    } catch (error) {
-      console.log('Could not check microphone permission status:', error);
-      // Fallback to default state
-      this.updateMicrophoneToggleState('default');
-    }
+    // This method is no longer needed since we always start with microphone disabled
+    // Keeping it for compatibility but not doing anything
+    console.log('Microphone permission check skipped - always starting with microphone disabled');
   }
 
   showLoading(message) {
