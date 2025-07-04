@@ -1,11 +1,14 @@
 // Offscreen Document for Google Meet Recorder
-// Handles MediaRecorder API with pause/resume and memory management
+// Handles MediaRecorder API with memory management and audio-only recording
 
 class MeetRecorderOffscreen {
   constructor() {
     this.mediaRecorder = null;
+    this.audioRecorder = null; // New: Audio-only recorder
     this.recordedChunks = [];
+    this.audioChunks = []; // New: Audio-only chunks
     this.currentStream = null;
+    this.audioOnlyStream = null; // New: Audio-only stream
     this.audioContext = null;
     this.isRecording = false;
     this.isPaused = false;
@@ -16,7 +19,9 @@ class MeetRecorderOffscreen {
     // Memory management
     this.maxChunkSize = 50 * 1024 * 1024; // 50MB chunks
     this.currentChunkSize = 0;
+    this.audioChunkSize = 0; // New: Audio chunk size tracking
     this.chunkBlobs = [];
+    this.audioChunkBlobs = []; // New: Audio chunk blobs
     
     this.setupMessageListener();
     console.log('Meet Recorder Offscreen document initialized');
@@ -27,7 +32,6 @@ class MeetRecorderOffscreen {
       console.log('Offscreen received message:', message);
       const validactions = [
         'startTabRecording', 
-        'startScreenRecording', 
         'pauseRecording', 
         'resumeRecording', 
         'stopRecording', 
@@ -35,19 +39,12 @@ class MeetRecorderOffscreen {
       ];
       
       if( !message || !message.action || !validactions.includes(message.action)) {
-        // console.warn('Invalid message action in offscreen:', message.action);
         return;
       }
       
       switch (message.action) {
         case 'startTabRecording':
           this.startTabRecording(message.streamId, message.options)
-            .then(result => sendResponse(result))
-            .catch(error => sendResponse({ success: false, error: error.message }));
-          return true;
-          
-        case 'startScreenRecording':
-          this.startScreenRecording(message.options)
             .then(result => sendResponse(result))
             .catch(error => sendResponse({ success: false, error: error.message }));
           return true;
@@ -74,22 +71,27 @@ class MeetRecorderOffscreen {
       
       // Reset state
       this.recordedChunks = [];
+      this.audioChunks = []; // New: Reset audio chunks
       this.chunkBlobs = [];
+      this.audioChunkBlobs = []; // New: Reset audio chunk blobs
       this.currentChunkSize = 0;
+      this.audioChunkSize = 0; // New: Reset audio chunk size
       this.totalPausedTime = 0;
       this.lastPauseTime = null;
       this.recordingStartTime = Date.now();
       
-      // Use the proven method for tab capture
-      const combinedStream = await this.createTabCombinedStream(streamId, options);
+      // Create combined stream and separate audio-only stream
+      const { combinedStream, audioOnlyStream } = await this.createTabCombinedStreamWithAudio(streamId, options);
       this.currentStream = combinedStream;
+      this.audioOnlyStream = audioOnlyStream; // New: Store audio-only stream
       
-      await this.initializeMediaRecorder(this.currentStream, options);
+      // Initialize both recorders
+      await this.initializeMediaRecorders(this.currentStream, this.audioOnlyStream, options);
       
       this.isRecording = true;
       this.isPaused = false;
       
-      return { success: true, message: 'Tab recording started successfully' };
+      return { success: true, message: 'Tab recording started successfully with audio-only stream' };
       
     } catch (error) {
       console.error('Error starting tab recording:', error);
@@ -98,9 +100,9 @@ class MeetRecorderOffscreen {
     }
   }
 
-async createTabCombinedStream(streamId, options) {
+async createTabCombinedStreamWithAudio(streamId, options) {
   try {
-    console.log('Creating combined tab stream with streamId:', streamId);
+    console.log('Creating combined tab stream with separate audio stream');
     
     // Use the tabCaptured streamId to get media
     this.originalTabStream = await navigator.mediaDevices.getUserMedia({
@@ -149,14 +151,17 @@ async createTabCombinedStream(streamId, options) {
       console.log('Tab audio passthrough enabled - audio will continue playing normally');
     }
 
-    // If microphone is not needed, return the stream with passthrough
+    // If microphone is not needed, return the streams
     if (!options.includeMicrophone) {
       const videoTracks = this.originalTabStream.getVideoTracks();
       const audioTracks = options.includeDeviceAudio && this.destination.stream.getAudioTracks().length > 0 
         ? this.destination.stream.getAudioTracks() 
         : [];
       
-      return new MediaStream([...videoTracks, ...audioTracks]);
+      const combinedStream = new MediaStream([...videoTracks, ...audioTracks]);
+      const audioOnlyStream = new MediaStream(audioTracks); // New: Audio-only stream
+      
+      return { combinedStream, audioOnlyStream };
     }
 
     // Get microphone audio with proper error handling
@@ -198,8 +203,13 @@ async createTabCombinedStream(streamId, options) {
       this.destination.stream.getTracks()[0],
     ]);
 
-    console.log('Combined stream created successfully with audio passthrough');
-    return combinedStream;
+    // Create audio-only stream with just the mixed audio
+    const audioOnlyStream = new MediaStream([
+      this.destination.stream.getTracks()[0],
+    ]);
+
+    console.log('Combined stream and audio-only stream created successfully with audio passthrough');
+    return { combinedStream, audioOnlyStream };
 
   } catch (error) {
     console.error('Error creating combined tab stream:', error);
@@ -207,312 +217,31 @@ async createTabCombinedStream(streamId, options) {
   }
 }
 
-  async setupAudioPassthrough(videoStream, options) {
-    try {
-      // Set up audio passthrough for device audio only (no microphone)
-      const videoAudioTracks = videoStream.getAudioTracks();
-      
-      if (videoAudioTracks.length > 0 && options.includeDeviceAudio) {
-        this.audioContext = new AudioContext({ sampleRate: 48000 });
-        this.destination = this.audioContext.createMediaStreamDestination();
-        
-        const videoAudioSource = this.audioContext.createMediaStreamSource(
-          new MediaStream(videoAudioTracks)
-        );
-        
-        // Create gain nodes
-        const recordingGain = this.audioContext.createGain();
-        const passthroughGain = this.audioContext.createGain();
-        
-        recordingGain.gain.value = 1.0; // Full volume for recording
-        passthroughGain.gain.value = 1.0; // Full volume for listening
-        
-        // Connect to both recording and speakers
-        videoAudioSource.connect(recordingGain);
-        videoAudioSource.connect(passthroughGain);
-        
-        recordingGain.connect(this.destination);
-        passthroughGain.connect(this.audioContext.destination);
-        
-        // Create final stream
-        const videoTracks = videoStream.getVideoTracks();
-        const audioTracks = this.destination.stream.getAudioTracks();
-        
-        const finalStream = new MediaStream([
-          ...videoTracks,
-          ...audioTracks
-        ]);
-        
-        console.log('Audio passthrough enabled for device audio');
-        return finalStream;
-      } else {
-        console.log('No audio tracks found or device audio disabled');
-      }
-      
-      return videoStream;
-      
-    } catch (error) {
-      console.error('Error setting up audio passthrough:', error);
-      return videoStream;
-    }
-  }
-
-  async startScreenRecording(options) {
-    try {
-      console.log('Starting screen recording with options:', options);
-      
-      // Reset state
-      this.recordedChunks = [];
-      this.chunkBlobs = [];
-      this.currentChunkSize = 0;
-      this.totalPausedTime = 0;
-      this.lastPauseTime = null;
-      this.recordingStartTime = Date.now();
-      
-      // Use the proven method for screen capture
-      const combinedStream = await this.createScreenCombinedStream(options);
-      this.currentStream = combinedStream;
-      
-      await this.initializeMediaRecorder(this.currentStream, options);
-      
-      this.isRecording = true;
-      this.isPaused = false;
-      
-      return { success: true, message: 'Screen recording started successfully' };
-      
-    } catch (error) {
-      console.error('Error starting screen recording:', error);
-      this.cleanup();
-      return { success: false, error: error.message };
-    }
-  }
-
-  async createScreenCombinedStream(options) {
-    try {
-      console.log('Creating combined screen stream');
-      
-      // Get display media
-      this.originalDisplayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          ...this.getVideoConstraints(options.videoQuality),
-          cursor: 'always'
-        },
-        audio: options.includeDeviceAudio
-      });
-
-      console.log('Display stream acquired:', {
-        video: this.originalDisplayStream.getVideoTracks().length,
-        audio: this.originalDisplayStream.getAudioTracks().length
-      });
-
-      // If microphone is not needed, return the display stream directly
-      if (!options.includeMicrophone) {
-        return this.originalDisplayStream;
-      }
-
-      // Get microphone audio with proper error handling
-      try {
-        this.micStream = await navigator.mediaDevices.getUserMedia({
-          audio: { 
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true 
-          },
-        });
-
-        console.log('Microphone stream acquired for screen recording');
-
-        // Combine the streams using AudioContext
-        this.audioContext = new AudioContext();
-        this.destination = this.audioContext.createMediaStreamDestination();
-        
-        // Connect microphone to mixed destination
-        this.audioContext.createMediaStreamSource(this.micStream).connect(this.destination);
-        
-        // Connect display audio to mixed destination (if available)
-        if (options.includeDeviceAudio && this.originalDisplayStream.getAudioTracks().length > 0) {
-          this.audioContext.createMediaStreamSource(this.originalDisplayStream).connect(this.destination);
-        }
-
-        // Create combined stream with video from display and mixed audio
-        const combinedStream = new MediaStream([
-          this.originalDisplayStream.getVideoTracks()[0],
-          this.destination.stream.getTracks()[0],
-        ]);
-
-        console.log('Combined screen stream created successfully');
-        return combinedStream;
-
-      } catch (micError) {
-        console.error('Failed to get microphone access for screen recording:', micError);
-        
-        // Continue with just display stream instead of failing
-        console.warn('Continuing screen recording without microphone due to access error');
-        
-        // Notify about microphone failure
-        chrome.runtime.sendMessage({
-          action: 'microphoneAccessFailed',
-          error: micError.message
-        }).catch(() => {});
-        
-        return this.originalDisplayStream;
-      }
-
-    } catch (error) {
-      console.error('Error creating combined screen stream:', error);
-      if (error.name === 'NotAllowedError') {
-        throw new Error('Screen sharing permission denied. Please allow screen capture and try again.');
-      }
-      throw error;
-    }
-  }
-
-  async getTabStream(streamId, options) {
-    console.log('Getting tab stream with ID:', streamId);
-    
-    const constraints = {
-      audio: options.includeDeviceAudio ? {
-        mandatory: {
-          chromeMediaSource: 'tab',
-          chromeMediaSourceId: streamId
-        }
-      } : false,
-      video: {
-        mandatory: {
-          chromeMediaSource: 'tab',
-          chromeMediaSourceId: streamId,
-          ...this.getVideoConstraints(options.videoQuality)
-        }
-      }
-    };
-    
-    console.log('Tab stream constraints:', constraints);
-    
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      // Store original tab stream for proper cleanup
-      this.originalTabStream = stream;
-      
-      console.log('Tab stream acquired successfully:', {
-        videoTracks: stream.getVideoTracks().length,
-        audioTracks: stream.getAudioTracks().length
-      });
-      return stream;
-    } catch (error) {
-      console.error('Error getting tab stream:', error);
-      throw new Error(`Failed to capture tab: ${error.message}`);
-    }
-  }
-
-  async getDisplayStream(options) {
-    console.log('Getting display stream with options:', options);
-    
-    const constraints = {
-      video: {
-        ...this.getVideoConstraints(options.videoQuality),
-        cursor: 'always'
-      },
-      audio: options.includeDeviceAudio
-    };
-    
-    console.log('Display stream constraints:', constraints);
-    
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
-      
-      // Store original display stream for proper cleanup
-      this.originalDisplayStream = stream;
-      
-      console.log('Display stream acquired successfully:', {
-        videoTracks: stream.getVideoTracks().length,
-        audioTracks: stream.getAudioTracks().length
-      });
-      return stream;
-    } catch (error) {
-      console.error('Error getting display stream:', error);
-      if (error.name === 'NotAllowedError') {
-        throw new Error('Screen sharing permission denied. Please allow screen capture and try again.');
-      }
-      throw new Error(`Failed to capture screen: ${error.message}`);
-    }
-  }
-
-  async mixStreamWithMicrophone(videoStream, options) {
-    try {
-      // Get microphone stream
-      const micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
-        }
-      });
-      
-      // Create audio context for mixing
-      this.audioContext = new AudioContext({ sampleRate: 48000 });
-      const destination = this.audioContext.createMediaStreamDestination();
-      
-      // Mix existing audio (if any)
-      const videoAudioTracks = videoStream.getAudioTracks();
-      if (videoAudioTracks.length > 0) {
-        const videoAudioSource = this.audioContext.createMediaStreamSource(
-          new MediaStream(videoAudioTracks)
-        );
-        
-        // Create gain node for system audio
-        const systemGain = this.audioContext.createGain();
-        systemGain.gain.value = 0.8; // Slightly reduce system audio
-        
-        videoAudioSource.connect(systemGain);
-        systemGain.connect(destination);
-      }
-      
-      // Add microphone audio
-      const micAudioSource = this.audioContext.createMediaStreamSource(micStream);
-      
-      // Create gain node for microphone
-      const micGain = this.audioContext.createGain();
-      micGain.gain.value = 1.0; // Full microphone volume
-      
-      micAudioSource.connect(micGain);
-      micGain.connect(destination);
-      
-      // Create final stream
-      const videoTracks = videoStream.getVideoTracks();
-      const mixedAudioTracks = destination.stream.getAudioTracks();
-      
-      const finalStream = new MediaStream([
-        ...videoTracks,
-        ...mixedAudioTracks
-      ]);
-      
-      console.log('Audio streams mixed successfully');
-      return finalStream;
-      
-    } catch (error) {
-      console.error('Error mixing audio:', error);
-      // Fallback to original stream
-      return videoStream;
-    }
-  }
-
-  async initializeMediaRecorder(stream, options) {
+  async initializeMediaRecorders(videoStream, audioStream, options) {
     const mimeType = this.getSupportedMimeType();
+    const audioMimeType = this.getSupportedAudioMimeType(); // New: Audio-only mime type
     
     const mediaRecorderOptions = {
       mimeType: mimeType,
       videoBitsPerSecond: this.getVideoBitrate(options.videoQuality),
       audioBitsPerSecond: 128000
     };
+
+    const audioRecorderOptions = {
+      mimeType: audioMimeType,
+      audioBitsPerSecond: 128000
+    };
     
-    this.mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
+    // Initialize video+audio recorder
+    this.mediaRecorder = new MediaRecorder(videoStream, mediaRecorderOptions);
     
-    // Setup event handlers
+    // Initialize audio-only recorder
+    this.audioRecorder = new MediaRecorder(audioStream, audioRecorderOptions);
+    
+    // Setup event handlers for video+audio recorder
     this.mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
-        this.handleDataAvailable(event.data);
+        this.handleVideoDataAvailable(event.data);
       }
     };
     
@@ -522,37 +251,45 @@ async createTabCombinedStream(streamId, options) {
     
     this.mediaRecorder.onerror = (event) => {
       console.error('MediaRecorder error:', event.error);
-      this.releaseAllStreams(); // Release ALL streams immediately on error
+      this.releaseAllStreams();
       this.notifyError('Recording error: ' + event.error.message);
     };
-    
-    this.mediaRecorder.onpause = () => {
-      console.log('MediaRecorder paused');
+
+    // Setup event handlers for audio-only recorder
+    this.audioRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        this.handleAudioDataAvailable(event.data);
+      }
     };
     
-    this.mediaRecorder.onresume = () => {
-      console.log('MediaRecorder resumed');
+    this.audioRecorder.onstop = () => {
+      console.log('Audio-only recorder stopped');
     };
     
-    // Start recording
+    this.audioRecorder.onerror = (event) => {
+      console.error('Audio MediaRecorder error:', event.error);
+    };
+    
+    // Start both recordings
     this.mediaRecorder.start(1000); // Collect data every second
-    console.log('MediaRecorder started');
+    this.audioRecorder.start(1000); // Collect audio data every second
+    console.log('Both MediaRecorders started (video+audio and audio-only)');
     
     // Handle stream end
-    stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+    videoStream.getVideoTracks()[0]?.addEventListener('ended', () => {
       console.log('Video stream ended by user');
-      this.releaseAllStreams(); // Release ALL streams when user stops sharing
+      this.releaseAllStreams();
       this.stopRecording();
     });
   }
 
-  handleDataAvailable(data) {
+  handleVideoDataAvailable(data) {
     this.recordedChunks.push(data);
     this.currentChunkSize += data.size;
     
     // Check memory usage and create chunk if needed
     if (this.currentChunkSize >= this.maxChunkSize) {
-      this.createChunkBlob();
+      this.createVideoChunkBlob();
     }
     
     // Memory warning if getting large
@@ -561,7 +298,17 @@ async createTabCombinedStream(streamId, options) {
     }
   }
 
-  createChunkBlob() {
+  handleAudioDataAvailable(data) {
+    this.audioChunks.push(data);
+    this.audioChunkSize += data.size;
+    
+    // Check memory usage and create audio chunk if needed
+    if (this.audioChunkSize >= this.maxChunkSize) {
+      this.createAudioChunkBlob();
+    }
+  }
+
+  createVideoChunkBlob() {
     if (this.recordedChunks.length > 0) {
       const chunkBlob = new Blob(this.recordedChunks, {
         type: "video/webm"
@@ -571,7 +318,21 @@ async createTabCombinedStream(streamId, options) {
       this.recordedChunks = [];
       this.currentChunkSize = 0;
       
-      console.log(`Created chunk blob: ${(chunkBlob.size / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`Created video chunk blob: ${(chunkBlob.size / 1024 / 1024).toFixed(2)} MB`);
+    }
+  }
+
+  createAudioChunkBlob() {
+    if (this.audioChunks.length > 0) {
+      const audioChunkBlob = new Blob(this.audioChunks, {
+        type: this.getSupportedAudioMimeType()
+      });
+      
+      this.audioChunkBlobs.push(audioChunkBlob);
+      this.audioChunks = [];
+      this.audioChunkSize = 0;
+      
+      console.log(`Created audio chunk blob: ${(audioChunkBlob.size / 1024 / 1024).toFixed(2)} MB`);
     }
   }
 
@@ -580,10 +341,11 @@ async createTabCombinedStream(streamId, options) {
       console.log('Stop recording requested. Current state:', {
         isRecording: this.isRecording,
         isPaused: this.isPaused,
-        mediaRecorderState: this.mediaRecorder?.state
+        mediaRecorderState: this.mediaRecorder?.state,
+        audioRecorderState: this.audioRecorder?.state
       });
       
-      if (!this.isRecording || !this.mediaRecorder) {
+      if (!this.isRecording || !this.mediaRecorder || !this.audioRecorder) {
         return { success: false, error: 'No recording in progress' };
       }
       
@@ -592,8 +354,9 @@ async createTabCombinedStream(streamId, options) {
         this.totalPausedTime += Date.now() - this.lastPauseTime;
       }
       
-      // Stop the MediaRecorder
+      // Stop both MediaRecorders
       this.mediaRecorder.stop();
+      this.audioRecorder.stop();
       
       // Important: Release ALL streams immediately to restore normal playback
       this.releaseAllStreams();
@@ -659,19 +422,30 @@ async createTabCombinedStream(streamId, options) {
     try {
       console.log('🔥 AGGRESSIVE RELEASE: Releasing ALL video and audio streams...');
       
-      // 1. Stop MediaRecorder first
+      // 1. Stop MediaRecorders first
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-        console.log('Stopping MediaRecorder...');
+        console.log('Stopping video MediaRecorder...');
         try {
           this.mediaRecorder.stop();
         } catch (e) {
-          console.log('MediaRecorder already stopped or error stopping:', e);
+          console.log('Video MediaRecorder already stopped or error stopping:', e);
         }
         this.mediaRecorder = null;
+      }
+
+      if (this.audioRecorder && this.audioRecorder.state !== 'inactive') {
+        console.log('Stopping audio MediaRecorder...');
+        try {
+          this.audioRecorder.stop();
+        } catch (e) {
+          console.log('Audio MediaRecorder already stopped or error stopping:', e);
+        }
+        this.audioRecorder = null;
       }
       
       // 2. Stop ALL tracks in ALL streams
       this.stopAllTracks(this.currentStream, 'current');
+      this.stopAllTracks(this.audioOnlyStream, 'audioOnly');
       this.stopAllTracks(this.originalTabStream, 'originalTab');
       this.stopAllTracks(this.originalDisplayStream, 'originalDisplay');
       this.stopAllTracks(this.micStream, 'microphone');
@@ -712,6 +486,7 @@ async createTabCombinedStream(streamId, options) {
       
       // 5. NULL OUT ALL STREAM REFERENCES
       this.currentStream = null;
+      this.audioOnlyStream = null;
       this.originalTabStream = null;
       this.originalDisplayStream = null;
       this.micStream = null;
@@ -755,37 +530,58 @@ async createTabCombinedStream(streamId, options) {
     try {
       console.log('Processing recorded data...');
       
-      // Create final chunk from remaining data
-      this.createChunkBlob();
+      // Create final chunks from remaining data
+      this.createVideoChunkBlob();
+      this.createAudioChunkBlob();
       
-      // Combine all chunks
-      let finalBlob;
+      // Combine all video chunks
+      let finalVideoBlob;
       if (this.chunkBlobs.length > 0) {
-        finalBlob = new Blob(this.chunkBlobs, {
+        finalVideoBlob = new Blob(this.chunkBlobs, {
           type: this.getSupportedMimeType()
         });
       } else if (this.recordedChunks.length > 0) {
-        finalBlob = new Blob(this.recordedChunks, {
+        finalVideoBlob = new Blob(this.recordedChunks, {
           type: this.getSupportedMimeType()
         });
       } else {
-        throw new Error('No recorded data available');
+        throw new Error('No video recorded data available');
+      }
+
+      // Combine all audio chunks
+      let finalAudioBlob;
+      if (this.audioChunkBlobs.length > 0) {
+        finalAudioBlob = new Blob(this.audioChunkBlobs, {
+          type: this.getSupportedAudioMimeType()
+        });
+      } else if (this.audioChunks.length > 0) {
+        finalAudioBlob = new Blob(this.audioChunks, {
+          type: this.getSupportedAudioMimeType()
+        });
+      } else {
+        console.warn('No audio recorded data available');
+        finalAudioBlob = null;
       }
       
       // Calculate actual recording duration (excluding paused time)
       const totalRecordingTime = Date.now() - this.recordingStartTime;
       const actualDuration = (totalRecordingTime - this.totalPausedTime) / 1000;
       
-      // Create recording data
+      // Create recording data with both video and audio
       const recordingData = {
-        url: URL.createObjectURL(finalBlob),
-        size: finalBlob.size,
+        url: URL.createObjectURL(finalVideoBlob),
+        size: finalVideoBlob.size,
         duration: actualDuration,
         filename: this.generateFilename(),
-        mimeType: this.getSupportedMimeType()
+        mimeType: this.getSupportedMimeType(),
+        // New: Audio-only data
+        audioUrl: finalAudioBlob ? URL.createObjectURL(finalAudioBlob) : null,
+        audioSize: finalAudioBlob ? finalAudioBlob.size : 0,
+        audioFilename: this.generateAudioFilename(),
+        audioMimeType: this.getSupportedAudioMimeType()
       };
       
-      console.log(`Recording complete: ${(finalBlob.size / 1024 / 1024).toFixed(2)} MB, ${actualDuration.toFixed(1)}s`);
+      console.log(`Recording complete: Video ${(finalVideoBlob.size / 1024 / 1024).toFixed(2)} MB, Audio ${finalAudioBlob ? (finalAudioBlob.size / 1024 / 1024).toFixed(2) : 0} MB, ${actualDuration.toFixed(1)}s`);
       
       // Notify background script about completion
       chrome.runtime.sendMessage({
@@ -820,7 +616,9 @@ async createTabCombinedStream(streamId, options) {
     
     // Clear chunks (but keep blobs for potential use)
     this.recordedChunks = [];
+    this.audioChunks = [];
     this.currentChunkSize = 0;
+    this.audioChunkSize = 0;
     
     console.log('✅ Comprehensive cleanup completed');
   }
@@ -863,6 +661,24 @@ async createTabCombinedStream(streamId, options) {
     return 'video/webm';
   }
 
+  getSupportedAudioMimeType() {
+    const types = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+      'audio/wav'
+    ];
+    
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    
+    return 'audio/webm';
+  }
+
   generateFilename() {
     const timestamp = new Date().toISOString()
       .replace(/[:.]/g, '-')
@@ -871,6 +687,18 @@ async createTabCombinedStream(streamId, options) {
     
     const extension = this.getSupportedMimeType().includes('mp4') ? 'mp4' : 'webm';
     return `meet-recording-${timestamp}.${extension}`;
+  }
+
+  generateAudioFilename() {
+    const timestamp = new Date().toISOString()
+      .replace(/[:.]/g, '-')
+      .replace('T', '_')
+      .substring(0, 19);
+    
+    const extension = this.getSupportedAudioMimeType().includes('mp4') ? 'm4a' : 
+                     this.getSupportedAudioMimeType().includes('ogg') ? 'ogg' :
+                     this.getSupportedAudioMimeType().includes('wav') ? 'wav' : 'webm';
+    return `meet-audio-${timestamp}.${extension}`;
   }
 
   notifyError(message) {
@@ -895,6 +723,6 @@ const recorder = new MeetRecorderOffscreen();
 document.addEventListener('DOMContentLoaded', () => {
   const statusElement = document.getElementById('status');
   if (statusElement) {
-    statusElement.textContent = 'Meet recorder ready for comprehensive video and audio recording';
+    statusElement.textContent = 'Meet recorder ready for comprehensive video and audio recording with audio-only option';
   }
 });

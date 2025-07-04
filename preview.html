@@ -85,6 +85,13 @@
       50% { transform: scale(1.02); }
     }
 
+    .download-section {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
     .btn {
       padding: 12px 24px;
       border: none;
@@ -129,6 +136,17 @@
       box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
     }
 
+    .btn-download-audio {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+    }
+
+    .btn-download-audio:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
+    }
+
     .btn-close {
       background: rgba(255, 255, 255, 0.9);
       color: #374151;
@@ -139,6 +157,12 @@
     .btn-close:hover {
       background: rgba(229, 231, 235, 0.9);
       transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
     }
 
     .container {
@@ -278,6 +302,12 @@
         gap: 12px;
       }
 
+      .download-section {
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+      }
+
       .warning-message {
         text-align: center;
         border-radius: 12px;
@@ -326,6 +356,10 @@
         font-size: 13px;
         min-width: 120px;
       }
+
+      .download-section {
+        gap: 6px;
+      }
     }
   </style>
 </head>
@@ -343,10 +377,17 @@
           <strong>Warning:</strong> Closing this tab will delete the recording. Please save it first!
         </div>
         
-        <button id="downloadBtn" class="btn btn-download">
-          <span>💾</span>
-          Download Recording
-        </button>
+        <div class="download-section">
+          <button id="downloadBtn" class="btn btn-download">
+            <span>💾</span>
+            Download Video
+          </button>
+          
+          <button id="downloadAudioBtn" class="btn btn-download-audio">
+            <span>🎵</span>
+            Download Audio
+          </button>
+        </div>
         
         <button id="closeBtn" class="btn btn-close">
           <span>✕</span>
@@ -380,8 +421,12 @@
           <div class="detail-value" id="durationValue">--:--</div>
         </div>
         <div class="detail-card">
-          <div class="detail-label">File Size</div>
+          <div class="detail-label">Video Size</div>
           <div class="detail-value" id="sizeValue">-- MB</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-label">Audio Size</div>
+          <div class="detail-value" id="audioSizeValue">-- MB</div>
         </div>
         <div class="detail-card">
           <div class="detail-label">Quality</div>

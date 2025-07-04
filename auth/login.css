@@ -1,0 +1,872 @@
+/* Login Page Styles */
+.phone-input-group {
+  display: flex;
+  gap: 0; /* remove gap for seamless alignment */
+  align-items: stretch;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Updated Country Selector */
+.country-selector {
+  min-width: 130px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.country-select {
+  width: 100%;
+  height: 48px;
+  padding: 12px 36px 12px 12px;
+  border: none;
+  border-right: 1px solid #e1e5e9;
+  border-radius: 0;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  appearance: none;
+}
+
+.country-select:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Arrow positioning */
+.selector-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #666;
+}
+
+/* Updated Phone Input */
+.phone-input {
+  flex: 1;
+  height: 48px;
+  padding: 12px 16px;
+  border: none;
+  font-size: 16px;
+  background: white;
+  color: #333;
+  border-radius: 0;
+}
+
+.phone-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+/* Login Page Styles */
+/* Login Page Styles */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.container {
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+}
+
+.login-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  padding: 40px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4285f4, #34a853, #fbbc05, #ea4335);
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.phone-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Step Indicator */
+.step-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.step-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #4285f4;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.step-back:hover {
+  background: rgba(66, 133, 244, 0.1);
+}
+
+.step-info {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.input-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.phone-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* Country Selector */
+.country-selector {
+  position: relative;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.country-select {
+  width: 100%;
+  height: 48px;
+  padding: 12px 32px 12px 12px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+}
+
+.country-select:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.country-select:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+  color: #999;
+}
+
+.selector-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #666;
+}
+
+/* Phone Input */
+.phone-input {
+  flex: 1;
+  height: 48px;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.phone-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.phone-input::placeholder {
+  color: #999;
+}
+
+/* OTP Input */
+.otp-input-group {
+  display: flex;
+  justify-content: center;
+}
+
+.otp-input {
+  width: 100%;
+  height: 56px;
+  padding: 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.3em;
+  transition: all 0.2s ease;
+  font-family: 'Courier New', monospace;
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.otp-input::placeholder {
+  color: #999;
+  letter-spacing: normal;
+  font-size: 14px;
+  font-weight: normal;
+  font-family: inherit;
+}
+
+.input-hint {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.input-hint strong {
+  color: #333;
+}
+
+.attempts-left {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.attempts-left.warning {
+  color: #ea4335;
+  font-weight: 600;
+}
+
+/* Max Attempts Reached */
+.max-attempts-reached {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.max-attempts-reached h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.max-attempts-reached p {
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.max-attempts-reached button {
+  transition: all 0.2s ease;
+}
+
+.max-attempts-reached button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Resend Section */
+.resend-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.resend-btn {
+  background: none;
+  border: none;
+  color: #4285f4;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.resend-btn:hover:not(:disabled) {
+  background: rgba(66, 133, 244, 0.1);
+}
+
+.resend-btn:disabled {
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* Success State */
+.success-state {
+  text-align: center;
+  padding: 20px;
+}
+
+.success-icon {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  animation: successPulse 1s ease-out;
+}
+
+.success-state h3 {
+  color: #333;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.success-state p {
+  color: #666;
+  font-size: 14px;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Login Button */
+.login-btn {
+  height: 48px;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: #3367d6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-btn:disabled {
+  background: #e1e5e9;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-text {
+  transition: opacity 0.2s ease;
+}
+
+.btn-loader {
+  position: absolute;
+}
+
+.login-btn.loading .btn-text {
+  opacity: 0;
+}
+
+.login-btn.loading .btn-loader {
+  display: block !important;
+}
+
+/* Loaders */
+.loader-spinner, .loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(66, 133, 244, 0.2);
+  border-top: 3px solid #4285f4;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.footer p {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Overlays */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  z-index: 100;
+}
+
+.overlay-content {
+  text-align: center;
+  padding: 24px;
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Error Overlay */
+.error-overlay .overlay-content {
+  max-width: 280px;
+}
+
+.error-icon {
+  color: #ea4335;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.error-message {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
+.error-dismiss-btn {
+  background: #ea4335;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.error-dismiss-btn:hover {
+  background: #d33b2c;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  body {
+    padding: 16px;
+  }
+  
+  .login-card {
+    padding: 32px 24px;
+  }
+  
+  .phone-input-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .country-selector {
+    min-width: auto;
+  }
+  
+  .step-indicator {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .step-back {
+    align-self: flex-start;
+  }
+  
+  .step-info {
+    align-self: center;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .login-card {
+    border: 2px solid #000;
+  }
+  
+  .country-select,
+  .phone-input,
+  .otp-input {
+    border-color: #000;
+  }
+  
+  .login-btn {
+    border: 2px solid #000;
+  }
+}
+/* Additional CSS for OTP and Success Steps - Add this to your existing login.css */
+
+/* Step-specific styling */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Step Indicator */
+.step-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.step-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #4285f4;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+  background: none;
+  border: none;
+}
+
+.step-back:hover {
+  background: rgba(66, 133, 244, 0.1);
+}
+
+.step-info {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+/* OTP Section */
+.otp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* OTP Input */
+.otp-input-group {
+  display: flex;
+  justify-content: center;
+}
+
+.otp-input {
+  width: 100%;
+  height: 56px;
+  padding: 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.3em;
+  transition: all 0.2s ease;
+  font-family: 'Courier New', monospace;
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.otp-input::placeholder {
+  color: #999;
+  letter-spacing: normal;
+  font-size: 14px;
+  font-weight: normal;
+  font-family: inherit;
+}
+
+.input-hint {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.input-hint strong {
+  color: #333;
+}
+
+.attempts-left {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.attempts-left.warning {
+  color: #ea4335;
+  font-weight: 600;
+}
+
+/* Resend Section */
+.resend-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.resend-btn {
+  background: none;
+  border: none;
+  color: #4285f4;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.resend-btn:hover:not(:disabled) {
+  background: rgba(66, 133, 244, 0.1);
+}
+
+.resend-btn:disabled {
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* Success State */
+.success-state {
+  text-align: center;
+  padding: 20px;
+}
+
+.success-icon {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  animation: successPulse 1s ease-out;
+}
+
+.success-state h3 {
+  color: #333;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.success-state p {
+  color: #666;
+  font-size: 14px;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Max Attempts Reached */
+.max-attempts-reached {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.max-attempts-reached .error-icon {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  color: #ea4335;
+}
+
+.max-attempts-reached h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.max-attempts-reached p {
+  font-size: 14px;
+  margin-bottom: 24px;
+  color: #666;
+}
+
+.max-attempts-reached button {
+  transition: all 0.2s ease;
+}
+
+.max-attempts-reached button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Loading states for buttons */
+.login-btn.loading .btn-text {
+  opacity: 0;
+}
+
+.login-btn.loading .btn-loader {
+  display: block !important;
+}
+
+/* Responsive adjustments for new elements */
+@media (max-width: 480px) {
+  .step-indicator {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .step-back {
+    align-self: flex-start;
+  }
+  
+  .step-info {
+    align-self: center;
+  }
+  
+  .otp-input {
+    font-size: 20px;
+    height: 52px;
+  }
+  
+  .max-attempts-reached {
+    padding: 20px 12px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .otp-input {
+    border-color: #000;
+  }
+  
+  .step-back {
+    border: 1px solid #4285f4;
+  }
+  
+  .resend-btn {
+    border: 1px solid #4285f4;
+  }
+}

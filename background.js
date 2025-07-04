@@ -1,4 +1,4 @@
-// Background Service Worker for Google Meet Recorder
+// Background Service Worker for Google Meet Recorder with Authentication and Audio Support
 
 let recordingState = {
   isRecording: false,
@@ -9,6 +9,10 @@ let recordingState = {
   recordingData: null
 };
 
+let refreshTimeout = null;
+let refreshRetryCount = 0;
+const MAX_REFRESH_RETRIES = 3;
+
 // Create offscreen document for MediaRecorder API
 async function createOffscreenDocument() {
   if (await chrome.offscreen.hasDocument()) return;
@@ -16,8 +20,256 @@ async function createOffscreenDocument() {
   await chrome.offscreen.createDocument({
     url: 'offscreen.html',
     reasons: ['USER_MEDIA'],
-    justification: 'Recording screen content using MediaRecorder API'
+    justification: 'Recording screen content using MediaRecorder API with audio-only option'
   });
+}
+
+// API Handler Functions (moved from frontend to avoid CSP issues)
+async function handleGetPhoneCodes(sendResponse) {
+  try {
+    console.log('Background: Fetching phone codes from API...');
+    
+    const response = await fetch('https://arc.vocallabs.ai/v1/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: `
+          query GetExchangeRate {
+            vocallabs_exchange_rate {
+              phone_code
+              country_code
+            }
+          }
+        `
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.errors) {
+      throw new Error(data.errors[0]?.message || 'GraphQL error');
+    }
+
+    const phoneCodes = data.data.vocallabs_exchange_rate || [];
+    console.log(`Background: Loaded ${phoneCodes.length} phone codes`);
+    
+    sendResponse({ 
+      success: true, 
+      phoneCodes: phoneCodes 
+    });
+    
+  } catch (error) {
+    console.error('Background: Error loading phone codes:', error);
+    sendResponse({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+}
+
+async function handleLogoutAPI(refreshToken, sendResponse) {
+  try {
+    console.log('Background: Calling logout API');
+    
+    const response = await fetch('https://db.subspace.money/v1/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: `
+          mutation Logout($refreshToken: String!) {
+            logout(refreshToken: $refreshToken) {
+              success
+              message
+            }
+          }
+        `,
+        variables: { refreshToken: refreshToken }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.errors) {
+      throw new Error(data.errors[0]?.message || 'Logout API failed');
+    }
+
+    const result = data.data.logout;
+    console.log('Background: Logout API result:', result);
+    
+    sendResponse({ 
+      success: true, 
+      result: result 
+    });
+    
+  } catch (error) {
+    console.error('Background: Error calling logout API:', error);
+    // Don't fail the logout process if API call fails
+    sendResponse({ 
+      success: true, 
+      warning: error.message 
+    });
+  }
+}
+
+async function handleRefreshTokenFromFrontend(refreshToken, userId, sendResponse) {
+  try {
+    console.log('Background: Refreshing token for frontend request');
+    
+    const tokens = await refreshAuthToken(refreshToken, userId);
+    updateTokens(tokens.auth_token, tokens.refresh_token);
+    
+    sendResponse({ 
+      success: true, 
+      authToken: tokens.auth_token, 
+      refreshToken: tokens.refresh_token 
+    });
+
+  } catch (error) {
+    console.error('Background: Error refreshing token for frontend:', error);
+    sendResponse({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+}
+
+async function handleSendOTP(phone, sendResponse) {
+  try {
+    console.log('Background: Sending OTP to:', phone);
+    
+    const response = await fetch('https://db.subspace.money/v1/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: `
+          mutation Register($phone: String!) {
+            registerWithoutPasswordV2(credentials: {phone: $phone}) {
+              request_id
+              status
+            }
+          }
+        `,
+        variables: { phone: phone }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.errors) {
+      throw new Error(data.errors[0]?.message || 'Failed to send OTP');
+    }
+
+    const result = data.data.registerWithoutPasswordV2;
+    console.log('Background: OTP sent, result:', result);
+    
+    sendResponse({ 
+      success: true, 
+      result: result 
+    });
+    
+  } catch (error) {
+    console.error('Background: Error sending OTP:', error);
+    sendResponse({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+}
+
+async function handleVerifyOTP(phone, otp, sendResponse) {
+  try {
+    console.log('Background: Verifying OTP for:', phone);
+    
+    const response = await fetch('https://db.subspace.money/v1/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: `
+          mutation VerifyOTP($phone1: String!, $otp1: String!) {
+            verifyOTPV2(request: {otp: $otp1, phone: $phone1}) {
+              auth_token
+              refresh_token
+              id
+              status
+              deviceInfoSaved
+            }
+          }
+        `,
+        variables: { phone1: phone, otp1: otp }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.errors) {
+      throw new Error(data.errors[0]?.message || 'Failed to verify OTP');
+    }
+
+    const result = data.data.verifyOTPV2;
+    console.log('Background: OTP verification result:', result);
+    
+    // Check if verification was successful
+    if (result.auth_token && result.refresh_token && result.id) {
+      // Store tokens
+      await chrome.storage.local.set({
+        'auth_token': result.auth_token,
+        'refresh_token': result.refresh_token,
+        'user_id': result.id
+      });
+      
+      console.log('Background: OTP verification successful, tokens stored');
+      
+      // Schedule token refresh
+      scheduleTokenRefresh();
+      
+      // Dispatch login success event
+      handleAuthEvent('loginSuccess', {
+        userId: result.id,
+        authToken: result.auth_token
+      });
+      
+      sendResponse({ 
+        success: true, 
+        result: {
+          ...result,
+          status: 'success' // Ensure status is set for frontend
+        }
+      });
+    } else {
+      throw new Error('Invalid OTP or verification failed');
+    }
+    
+  } catch (error) {
+    console.error('Background: Error verifying OTP:', error);
+    sendResponse({ 
+      success: false, 
+      error: error.message 
+    });
+  }
 }
 
 // Handle extension installation
@@ -31,7 +283,183 @@ chrome.runtime.onInstalled.addListener(() => {
     includeMicrophone: false,
     recordingFormat: 'webm'
   });
+
+  // Schedule token refresh check
+  scheduleTokenRefresh();
 });
+
+// Handle extension startup
+chrome.runtime.onStartup.addListener(() => {
+  console.log('Google Meet Recorder Extension started');
+  
+  // Schedule token refresh check
+  scheduleTokenRefresh();
+});
+
+// Authentication Functions
+function parseJwt(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Failed to parse JWT:', error);
+    return null;
+  }
+}
+
+async function refreshAuthToken(refreshToken, userId) {
+  try {
+    const response = await fetch('https://db.subspace.money/v1/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: `
+          mutation MyMutation($refresh_token: String = "", $user_id: uuid = "") {
+            refreshToken(request: {refresh_token: $refresh_token, user_id: $user_id}) {
+              auth_token
+              refresh_token
+              status
+              id
+            }
+          }
+        `,
+        variables: { refresh_token: refreshToken, user_id: userId }
+      })
+    });
+
+    const data = await response.json();
+    const result = data.data.refreshToken;
+    
+    if (result.status === 'success') {
+      return {
+        auth_token: result.auth_token,
+        refresh_token: result.refresh_token
+      };
+    }
+    throw new Error('Token refresh failed');
+  } catch (error) {
+    console.error('Failed to refresh token:', error);
+    throw error;
+  }
+}
+
+function clearTokensAndRedirect() {
+  chrome.storage.local.remove(['auth_token', 'refresh_token', 'user_id']);
+  
+  // Notify any open popup about token clearance
+  chrome.runtime.sendMessage({
+    action: 'authEvent',
+    eventType: 'tokensCleared'
+  }).catch(() => {
+    // Popup might not be open, ignore error
+  });
+}
+
+function scheduleTokenRefresh() {
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout);
+  }
+
+  chrome.storage.local.get(['auth_token', 'refresh_token', 'user_id']).then(result => {
+    const { auth_token, refresh_token, user_id } = result;
+
+    // Validate tokens before scheduling refresh
+    if (!auth_token || !refresh_token || !user_id) {
+      console.log('No tokens found for refresh scheduling');
+      return;
+    }
+
+    const tokenData = parseJwt(auth_token);
+    if (!tokenData || !tokenData.exp) {
+      console.log('Invalid token format, clearing tokens');
+      clearTokensAndRedirect();
+      return;
+    }
+    console.log('time to expire:', tokenData.exp);
+
+    const expiryTime = tokenData.exp * 1000; // Convert to milliseconds
+    const currentTime = Date.now();
+    const timeUntilExpiry = expiryTime - currentTime;
+    const refreshTime = timeUntilExpiry - (2 * 60 * 1000); // 2 minutes before expiry
+
+    console.log(`Token expires in ${Math.round(timeUntilExpiry / 1000 / 60)} minutes, refresh scheduled in ${Math.round(refreshTime / 1000 / 60)} minutes`);
+
+    if (refreshTime <= 0) {
+      // Token is already expired or will expire very soon
+      if (refreshRetryCount >= MAX_REFRESH_RETRIES) {
+        console.log('Max refresh retries reached, clearing tokens');
+        clearTokensAndRedirect();
+        return;
+      }
+      
+      console.log('Token expired or expiring soon, refreshing immediately...');
+      refreshAuthToken(refresh_token, user_id)
+        .then(({ auth_token, refresh_token }) => {
+          updateTokens(auth_token, refresh_token);
+          refreshRetryCount = 0;
+          scheduleTokenRefresh(); // Schedule next refresh
+        })
+        .catch(() => {
+          refreshRetryCount++;
+          console.log(`Token refresh failed, retry count: ${refreshRetryCount}`);
+          clearTokensAndRedirect();
+        });
+      return;
+    }
+
+    refreshTimeout = setTimeout(() => {
+      if (refreshRetryCount >= MAX_REFRESH_RETRIES) {
+        console.log('Max refresh retries reached, clearing tokens');
+        clearTokensAndRedirect();
+        return;
+      }
+      
+      console.log('Refreshing auth token...');
+      refreshAuthToken(refresh_token, user_id)
+        .then(({ auth_token, refresh_token }) => {
+          updateTokens(auth_token, refresh_token);
+          refreshRetryCount = 0;
+          scheduleTokenRefresh(); // Schedule next refresh
+        })
+        .catch(() => {
+          refreshRetryCount++;
+          console.log(`Token refresh failed, retry count: ${refreshRetryCount}`);
+          clearTokensAndRedirect();
+        });
+    }, refreshTime);
+  }).catch(error => {
+    console.error('Error scheduling token refresh:', error);
+  });
+}
+
+function updateTokens(authToken, refreshToken) {
+  chrome.storage.local.set({
+    'auth_token': authToken,
+    'refresh_token': refreshToken
+  }).then(() => {
+    console.log('Tokens updated successfully in background');
+    
+    // Notify popup about token update
+    chrome.runtime.sendMessage({
+      action: 'authEvent',
+      eventType: 'tokensUpdated',
+      data: { authToken, refreshToken }
+    }).catch(() => {
+      // Popup might not be open, ignore error
+    });
+  }).catch(error => {
+    console.error('Error updating tokens:', error);
+  });
+}
 
 // Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -41,6 +469,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'getRecordingState':
       sendResponse(recordingState);
       break;
+      
+    // API Calls (moved from frontend to avoid CSP issues)
+    case 'getPhoneCodes':
+      handleGetPhoneCodes(sendResponse);
+      return true;
+      
+    case 'sendOTP':
+      handleSendOTP(message.phone, sendResponse);
+      return true;
+      
+    case 'verifyOTP':
+      handleVerifyOTP(message.phone, message.otp, sendResponse);
+      return true;
+      
+    case 'refreshToken':
+      handleRefreshTokenFromFrontend(message.refreshToken, message.userId, sendResponse);
+      return true;
+      
+    case 'logoutAPI':
+      handleLogoutAPI(message.refreshToken, sendResponse);
+      return true;
       
     case 'startRecording':
       handleStartRecording(message.options, sendResponse);
@@ -88,18 +537,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
     case 'memoryWarning':
       console.warn('Memory warning during recording:', message.message);
-      // Could implement automatic quality reduction or chunked saving
       notifyPopupStateChange();
       break;
       
     case 'audioReleased':
       console.log('Audio streams released:', message.message);
-      // Could notify user that audio playback should be restored
       break;
       
     case 'allStreamsReleased':
       console.log('ALL video and audio streams released:', message.message);
-      // Normal video/audio playback should now be fully restored
       break;
       
     case 'meetSessionDetected':
@@ -111,13 +557,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
       
     case 'openPopup':
-      // Handle request to open popup (from content script)
       try {
         chrome.action.openPopup();
       } catch (error) {
         console.log('Could not open popup programmatically:', error);
-        // User will need to click the extension icon manually
       }
+      break;
+
+    // Authentication related messages
+    case 'authEvent':
+      handleAuthEvent(message.eventType, message.data);
+      break;
+
+    case 'checkAuthentication':
+      handleCheckAuthentication(sendResponse);
+      return true;
+
+    case 'refreshToken':
+      handleRefreshTokenRequest(sendResponse);
+      return true;
+
+    case 'clearTokens':
+      clearTokensAndRedirect();
+      sendResponse({ success: true });
       break;
       
     default:
@@ -125,11 +587,116 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Authentication message handlers
+function handleAuthEvent(eventType, data) {
+  console.log('Background received auth event:', eventType, data);
+  
+  switch (eventType) {
+    case 'tokensUpdated':
+      // Reschedule token refresh with new tokens
+      scheduleTokenRefresh();
+      break;
+      
+    case 'tokensCleared':
+      // Clear any scheduled refresh
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+        refreshTimeout = null;
+      }
+      refreshRetryCount = 0;
+      break;
+      
+    case 'loginSuccess':
+      // Start token refresh scheduling
+      scheduleTokenRefresh();
+      break;
+      
+    case 'logoutComplete':
+      // Clear any scheduled refresh and reset retry count
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+        refreshTimeout = null;
+      }
+      refreshRetryCount = 0;
+      console.log('Logout completed, token refresh cleared');
+      break;
+  }
+}
+
+async function handleCheckAuthentication(sendResponse) {
+  try {
+    const result = await chrome.storage.local.get(['auth_token', 'refresh_token', 'user_id']);
+    
+    if (!result.auth_token || !result.refresh_token) {
+      sendResponse({ isAuthenticated: false, reason: 'No tokens found' });
+      return;
+    }
+
+    const tokenData = parseJwt(result.auth_token);
+    if (!tokenData || !tokenData.exp) {
+      sendResponse({ isAuthenticated: false, reason: 'Invalid token format' });
+      return;
+    }
+
+    const currentTime = Date.now() / 1000;
+    const isExpired = tokenData.exp < currentTime;
+
+    if (isExpired) {
+      sendResponse({ isAuthenticated: false, reason: 'Token expired' });
+      return;
+    }
+
+    sendResponse({ 
+      isAuthenticated: true, 
+      tokenData: tokenData,
+      expiresIn: tokenData.exp - currentTime
+    });
+
+  } catch (error) {
+    console.error('Error checking authentication:', error);
+    sendResponse({ isAuthenticated: false, reason: error.message });
+  }
+}
+
+async function handleRefreshTokenRequest(sendResponse) {
+  try {
+    const result = await chrome.storage.local.get(['refresh_token', 'user_id']);
+    
+    if (!result.refresh_token || !result.user_id) {
+      sendResponse({ success: false, error: 'No refresh token found' });
+      return;
+    }
+
+    const tokens = await refreshAuthToken(result.refresh_token, result.user_id);
+    updateTokens(tokens.auth_token, tokens.refresh_token);
+    
+    sendResponse({ 
+      success: true, 
+      authToken: tokens.auth_token, 
+      refreshToken: tokens.refresh_token 
+    });
+
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
 // Start recording based on options
 async function handleStartRecording(options, sendResponse) {
   try {
     if (recordingState.isRecording) {
       sendResponse({ success: false, error: 'Recording already in progress' });
+      return;
+    }
+    
+    // Check authentication before starting recording
+    const authCheck = await new Promise(resolve => {
+      handleCheckAuthentication(resolve);
+    });
+    
+    if (!authCheck.isAuthenticated) {
+      sendResponse({ success: false, error: 'Authentication required. Please login first.' });
       return;
     }
     
@@ -152,16 +719,14 @@ async function handleStartRecording(options, sendResponse) {
     let result;
     if (options.recordingType === 'tab') {
       result = await startTabRecording(options);
-    } else if (options.recordingType === 'window') {
-      result = await startWindowRecording(options);
-    }
+    } 
     
     if (result.success) {
       recordingState.isRecording = true;
       recordingState.recordingStartTime = Date.now();
       updateBadge('REC');
       notifyPopupStateChange();
-      sendResponse({ success: true, message: 'Recording started successfully' });
+      sendResponse({ success: true, message: 'Recording started successfully with audio-only stream' });
     } else {
       resetRecordingState();
       sendResponse({ success: false, error: result.error });
@@ -208,33 +773,6 @@ async function startTabRecording(options) {
     
   } catch (error) {
     console.error('Tab recording error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Start window recording  
-async function startWindowRecording(options) {
-  try {
-    console.log('Starting window recording with options:', options);
-    
-    // Send to offscreen document and wait for response
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({
-        action: 'startScreenRecording',
-        options: options
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('Error sending to offscreen:', chrome.runtime.lastError);
-          resolve({ success: false, error: chrome.runtime.lastError.message });
-        } else {
-          console.log('Offscreen response:', response);
-          resolve(response || { success: false, error: 'No response from offscreen' });
-        }
-      });
-    });
-    
-  } catch (error) {
-    console.error('Window recording error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -503,8 +1041,25 @@ function handleMeetDetection(message, sender) {
 function handleRecordingComplete(message, sender) {
   console.log('Recording completed:', message.recordingData);
   
+  // Validate recording data structure
+  const recordingData = message.recordingData;
+  
+  if (!recordingData || !recordingData.url) {
+    console.error('Invalid recording data received');
+    handleRecordingError({ error: 'Invalid recording data received' }, sender);
+    return;
+  }
+  
+  // Log recording details including audio data
+  console.log('Recording details:', {
+    videoSize: recordingData.size ? `${(recordingData.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown',
+    audioSize: recordingData.audioSize ? `${(recordingData.audioSize / 1024 / 1024).toFixed(2)} MB` : 'No audio',
+    duration: recordingData.duration ? `${recordingData.duration.toFixed(1)}s` : 'Unknown',
+    hasAudio: !!recordingData.audioUrl
+  });
+  
   // Update recording state
-  recordingState.recordingData = message.recordingData;
+  recordingState.recordingData = recordingData;
   recordingState.isRecording = false;
   recordingState.isPaused = false;
   
@@ -513,7 +1068,7 @@ function handleRecordingComplete(message, sender) {
   
   // Store recording data for preview tab
   chrome.storage.session.set({ 
-    recordingData: message.recordingData 
+    recordingData: recordingData 
   });
   
   // Open preview tab
@@ -524,7 +1079,7 @@ function handleRecordingComplete(message, sender) {
   // Notify popup about completion
   notifyPopupStateChange();
   
-  console.log('Recording completion handled successfully');
+  console.log('Recording completion handled successfully with audio support');
 }
 
 // Handle recording errors from offscreen document
@@ -607,10 +1162,5 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && recordingState.isRecording && recordingState.currentTabId === tabId) {
     // Check if navigating away from a Meet session
     console.log(`Recording tab navigated to: ${changeInfo.url}`);
-    // if (recordingState.recordingType === 'tab' && 
-    //     !changeInfo.url.includes('meet.google.com')) {
-    //   console.log('Navigating away from Meet, stopping recording...');
-    //   handleTabClosing(tabId);
-    // }
   }
-}); 
+});

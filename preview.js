@@ -1,9 +1,10 @@
-// Recording Preview Page Controller
+// Recording Preview Page Controller with Audio Download Support
 
 class RecordingPreview {
   constructor() {
     this.recordingData = null;
     this.hasBeenSaved = false;
+    this.hasAudioBeenSaved = false; // New: Track audio download
     this.initializeElements();
     this.setupEventListeners();
     this.setupTabCloseWarning();
@@ -18,17 +19,18 @@ class RecordingPreview {
     
     this.durationValue = document.getElementById('durationValue');
     this.sizeValue = document.getElementById('sizeValue');
+    this.audioSizeValue = document.getElementById('audioSizeValue'); // New: Audio size display
     this.qualityValue = document.getElementById('qualityValue');
     this.formatValue = document.getElementById('formatValue');
     
     this.downloadBtn = document.getElementById('downloadBtn');
-    // this.newRecordingBtn = document.getElementById('newRecordingBtn');
+    this.downloadAudioBtn = document.getElementById('downloadAudioBtn'); // New: Audio download button
     this.closeBtn = document.getElementById('closeBtn');
   }
 
   setupEventListeners() {
     this.downloadBtn.addEventListener('click', () => this.downloadRecording());
-    // this.newRecordingBtn.addEventListener('click', () => this.startNewRecording());
+    this.downloadAudioBtn.addEventListener('click', () => this.downloadAudioRecording()); // New: Audio download handler
     this.closeBtn.addEventListener('click', () => this.closePreview());
     
     // Handle video load events
@@ -105,8 +107,27 @@ class RecordingPreview {
     if (data && data.url) {
       this.loadVideo(data.url);
       this.updateDetails(data);
+      this.updateAudioAvailability(data); // New: Check audio availability
     } else {
       this.showError();
+    }
+  }
+
+  updateAudioAvailability(data) {
+    // Check if audio data is available
+    const hasAudio = data.audioUrl && data.audioSize > 0;
+    
+    if (hasAudio) {
+      this.downloadAudioBtn.disabled = false;
+      this.downloadAudioBtn.style.opacity = '1';
+      this.downloadAudioBtn.style.cursor = 'pointer';
+      console.log('Audio recording available for download');
+    } else {
+      this.downloadAudioBtn.disabled = true;
+      this.downloadAudioBtn.style.opacity = '0.5';
+      this.downloadAudioBtn.style.cursor = 'not-allowed';
+      this.downloadAudioBtn.title = 'No audio was recorded';
+      console.log('No audio recording available');
     }
   }
 
@@ -141,9 +162,16 @@ class RecordingPreview {
       this.durationValue.textContent = this.formatDuration(data.duration);
     }
     
-    // File size
+    // Video file size
     if (data.size) {
       this.sizeValue.textContent = this.formatFileSize(data.size);
+    }
+
+    // Audio file size (new)
+    if (data.audioSize && data.audioSize > 0) {
+      this.audioSizeValue.textContent = this.formatFileSize(data.audioSize);
+    } else {
+      this.audioSizeValue.textContent = 'N/A';
     }
     
     // Quality (try to get from stored settings)
@@ -175,10 +203,14 @@ class RecordingPreview {
     this.recordingVideo.style.display = 'none';
     this.errorState.style.display = 'flex';
     
-    // Disable download button
+    // Disable both download buttons
     this.downloadBtn.disabled = true;
     this.downloadBtn.style.opacity = '0.5';
     this.downloadBtn.style.cursor = 'not-allowed';
+    
+    this.downloadAudioBtn.disabled = true;
+    this.downloadAudioBtn.style.opacity = '0.5';
+    this.downloadAudioBtn.style.cursor = 'not-allowed';
   }
 
   downloadRecording() {
@@ -196,21 +228,88 @@ class RecordingPreview {
       a.click();
       document.body.removeChild(a);
       
-      // Mark as saved
+      // Mark video as saved
       this.hasBeenSaved = true;
       
-      console.log('Download initiated:', a.download);
+      console.log('Video download initiated:', a.download);
       
     } catch (error) {
-      console.error('Download error:', error);
-      alert('Failed to download recording. Please try again.');
+      console.error('Video download error:', error);
+      alert('Failed to download video recording. Please try again.');
     }
+  }
+
+  downloadAudioRecording() {
+    if (!this.recordingData || !this.recordingData.audioUrl) {
+      alert('No audio recording data available for download');
+      return;
+    }
+    
+    try {
+      const a = document.createElement('a');
+      a.href = this.recordingData.audioUrl;
+      a.download = this.recordingData.audioFilename || `audio-recording-${new Date().toISOString().slice(0,19).replace(/[:.]/g, '-')}.webm`;
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Mark audio as saved
+      this.hasAudioBeenSaved = true;
+      
+      console.log('Audio download initiated:', a.download);
+      
+      // Show success message
+      this.showAudioDownloadSuccess();
+      
+    } catch (error) {
+      console.error('Audio download error:', error);
+      alert('Failed to download audio recording. Please try again.');
+    }
+  }
+
+  showAudioDownloadSuccess() {
+    // Create a temporary success notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      z-index: 10000;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      transform: translateX(100%);
+    `;
+    notification.textContent = '🎵 Audio download started successfully!';
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
   }
 
   setupTabCloseWarning() {
     // Warn user before closing tab if recording hasn't been saved
     window.addEventListener('beforeunload', (e) => {
-      if (!this.hasBeenSaved && this.recordingData) {
+      if ((!this.hasBeenSaved || !this.hasAudioBeenSaved) && this.recordingData) {
         const message = 'Your recording will be deleted if you close this tab. Save it first!';
         e.preventDefault();
         e.returnValue = message;
@@ -225,10 +324,17 @@ class RecordingPreview {
   }
 
   cleanupRecording() {
-    // Clean up blob URL to free memory
-    if (this.recordingData && this.recordingData.url) {
-      URL.revokeObjectURL(this.recordingData.url);
-      console.log('Recording blob URL cleaned up');
+    // Clean up blob URLs to free memory
+    if (this.recordingData) {
+      if (this.recordingData.url) {
+        URL.revokeObjectURL(this.recordingData.url);
+        console.log('Video recording blob URL cleaned up');
+      }
+      
+      if (this.recordingData.audioUrl) {
+        URL.revokeObjectURL(this.recordingData.audioUrl);
+        console.log('Audio recording blob URL cleaned up');
+      }
     }
     
     // Clear storage

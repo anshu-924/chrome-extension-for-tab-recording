@@ -9,6 +9,16 @@
 <body>
   <div class="container">
     
+    <!-- Simple Logout Button (top left) -->
+    <button id="simpleLogoutBtn" class="simple-logout-btn" style="display: none;" title="Logout">
+      Logout
+    </button>
+    
+    <!-- User Info Section (hidden by default since you don't want user data shown) -->
+    <div id="userInfoSection" style="display: none;">
+      <!-- User info will be inserted here by popup.js -->
+    </div>
+    
     <!-- Setup Mode (Before Recording) -->
     <div id="setupMode" class="mode-panel">
       <header class="header">
@@ -155,6 +165,7 @@
 
   </div>
 
+  <script src="../auth/logout.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet Recorder - Login</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+  <div class="container">
+    <div class="login-card">
+      <!-- Header -->
+      <div class="header">
+        <div class="logo">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="3" fill="#4285f4"/>
+            <path d="M12 1v6m0 8v6m11-7h-6m-8 0H1" stroke="#4285f4" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h1>Welcome to Meet Recorder</h1>
+        <p class="subtitle">Login/Signup first to continue</p>
+      </div>
+
+      <!-- Phone Number Step -->
+      <div id="phoneStep" class="login-form">
+        <div class="phone-section">
+          <label for="phoneInput" class="input-label">Phone Number</label>
+          
+          <div class="phone-input-group">
+            <!-- Country Code Selector -->
+            <div class="country-selector">
+              <select id="countrySelect" class="country-select">
+                <option value="" disabled>Loading...</option>
+              </select>
+              <div class="selector-arrow">
+                <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                  <path d="M1 1L6 6L11 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            
+            <!-- Phone Number Input -->
+            <input 
+              type="tel" 
+              id="phoneInput" 
+              class="phone-input" 
+              placeholder="Enter phone number"
+              maxlength="15"
+            />
+          </div>
+          
+          <div class="input-hint">
+            We'll send you a verification code
+          </div>
+        </div>
+
+        <!-- Send OTP Button -->
+        <button id="sendOtpBtn" class="login-btn" disabled>
+          <span class="btn-text">Send OTP</span>
+          <div class="btn-loader" style="display: none;">
+            <div class="loader-spinner"></div>
+          </div>
+        </button>
+
+        <!-- Footer -->
+        <div class="footer">
+          <p>By continuing, you agree to our Terms of Service and Privacy Policy</p>
+        </div>
+      </div>
+
+      <!-- OTP Verification Step -->
+      <div id="otpStep" class="login-form" style="display: none;">
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+          <div class="step-back" id="backToPhone">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Back to phone
+          </div>
+          <div class="step-info">Step 2 of 2</div>
+        </div>
+
+        <div class="otp-section">
+          <label for="otpInput" class="input-label">Enter Verification Code</label>
+          
+          <div class="otp-input-group">
+            <input 
+              type="text" 
+              id="otpInput" 
+              class="otp-input" 
+              placeholder="Enter 6-digit OTP"
+              maxlength="6"
+              autocomplete="one-time-code"
+            />
+          </div>
+          
+          <div class="input-hint">
+            We sent a verification code to <strong id="phoneDisplay">+91 78005 14652</strong>
+            <span id="attemptsLeft" class="attempts-left">3 attempts left</span>
+          </div>
+
+          <!-- Resend Section -->
+          <div class="resend-section">
+            <span id="resendTimer">Resend in 30s</span>
+            <button id="resendBtn" class="resend-btn" disabled>Resend Code</button>
+          </div>
+        </div>
+
+        <!-- Verify OTP Button -->
+        <button id="verifyOtpBtn" class="login-btn" disabled>
+          <span class="btn-text">Verify OTP</span>
+          <div class="btn-loader" style="display: none;">
+            <div class="loader-spinner"></div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Success Step -->
+      <div id="successStep" class="login-form" style="display: none;">
+        <div class="success-state">
+          <div class="success-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="#4caf50" stroke-width="2"/>
+              <path d="M9 12L11 14L15 10" stroke="#4caf50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Welcome to Meet Recorder!</h3>
+          <p>Your account has been verified successfully. Redirecting to recorder...</p>
+        </div>
+      </div>
+
+      <!-- Max Attempts Reached -->
+      <div id="maxAttemptsStep" class="login-form" style="display: none;">
+        <div class="max-attempts-reached">
+          <div class="error-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="#ea4335" stroke-width="2"/>
+              <line x1="15" y1="9" x2="9" y2="15" stroke="#ea4335" stroke-width="2"/>
+              <line x1="9" y1="9" x2="15" y2="15" stroke="#ea4335" stroke-width="2"/>
+            </svg>
+          </div>
+          <h3>Too Many Attempts</h3>
+          <p>You've exceeded the maximum number of verification attempts. Please try again later or contact support.</p>
+          <button id="startOverBtn" class="login-btn">Start Over</button>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div id="loadingOverlay" class="overlay" style="display: none;">
+        <div class="overlay-content">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Loading phone codes...</p>
+        </div>
+      </div>
+
+      <!-- Error Overlay -->
+      <div id="errorOverlay" class="overlay error-overlay" style="display: none;">
+        <div class="overlay-content">
+          <div class="error-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/>
+              <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+          <p id="errorMessage" class="error-message">Something went wrong</p>
+          <button id="dismissErrorBtn" class="error-dismiss-btn">Try Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="auth-manager.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>

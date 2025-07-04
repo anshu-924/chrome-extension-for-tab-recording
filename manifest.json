@@ -15,7 +15,9 @@
   ],
   
   "host_permissions": [
-    "*://meet.google.com/*"
+    "*://meet.google.com/*",
+    "*://db.subspace.money/*",
+    "*://arc.vocallabs.ai/*"
   ],
   
   "background": {
@@ -54,9 +56,18 @@
       "resources": [
         "preview.html",
         "microphone-permission.html",
-        "microphone-permission.js"
+        "microphone-permission.js",
+        "auth/login.html",
+        "auth/login.css", 
+        "auth/login.js",
+        "auth/auth-manager.js",
+        "auth/logout.js"
       ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }

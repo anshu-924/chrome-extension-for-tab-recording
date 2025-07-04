@@ -1,17 +1,377 @@
-// Google Meet Recorder Popup Controller
+// Google Meet Recorder Popup Controller with Authentication
 
 class MeetRecorderPopup {
   constructor() {
     this.currentMode = 'setup'; // setup, recording, complete
     this.recordingState = null;
     this.recordingTimer = null;
+    this.isAuthenticated = false;
     
     console.log('Initializing MeetRecorderPopup...');
     
-    this.initializeElements();
-    this.setupEventListeners();
-    this.loadInitialState();
+    // Check authentication first before initializing UI
+    this.checkAuthenticationAndInit();
   }
+
+   async checkAuthenticationAndInit() {
+    try {
+      console.log('Checking authentication status...');
+      
+      // Check if user is authenticated
+      this.isAuthenticated = await this.checkAuthentication();
+      
+      if (!this.isAuthenticated) {
+        console.log('User not authenticated, redirecting to login...');
+        this.redirectToLogin();
+        return;
+      }
+      
+      console.log('User authenticated, initializing recorder UI...');
+      
+      // Initialize LogoutManager if available
+      if (window.logoutManager) {
+        this.logoutManager = window.logoutManager;
+      }
+      
+      // User is authenticated, proceed with normal initialization
+      this.initializeElements();
+      this.setupEventListeners();
+      this.loadInitialState();
+      
+      // Show simple logout button instead of user info
+      this.showSimpleLogoutButton();
+      
+    } catch (error) {
+      console.error('Error during authentication check:', error);
+      this.showAuthError('Authentication check failed. Please try again.');
+    }
+  }
+
+  // Show simple logout button when authenticated
+  showSimpleLogoutButton() {
+    const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
+    if (simpleLogoutBtn) {
+      simpleLogoutBtn.style.display = 'block';
+      console.log('Simple logout button displayed');
+    }
+  }
+
+  // Hide simple logout button
+  hideSimpleLogoutButton() {
+    const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
+    if (simpleLogoutBtn) {
+      simpleLogoutBtn.style.display = 'none';
+    }
+  }
+
+  // Handle simple logout button click
+  async handleSimpleLogout() {
+    try {
+      console.log('Simple logout button clicked...');
+      
+      // Get logout button for loading state
+      const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
+      if (simpleLogoutBtn) {
+        simpleLogoutBtn.classList.add('loading');
+        simpleLogoutBtn.disabled = true;
+        simpleLogoutBtn.textContent = 'Logging out...';
+      }
+      
+      // Show loading overlay
+      this.showLoading('Logging out...');
+      
+      // Use LogoutManager if available, otherwise fallback to direct implementation
+      let logoutResult;
+      if (this.logoutManager) {
+        console.log('Using LogoutManager for logout...');
+        logoutResult = await this.logoutManager.logout();
+      } else {
+        console.log('LogoutManager not available, using fallback logout...');
+        logoutResult = await this.fallbackLogout();
+      }
+      
+      // Hide loading
+      this.hideLoading();
+      
+      if (logoutResult.success) {
+        console.log('Logout successful, redirecting to login...');
+        // Small delay to show success state
+        setTimeout(() => {
+          this.redirectToLogin();
+        }, 500);
+      } else {
+        console.error('Logout failed:', logoutResult.error);
+        this.showError('Logout failed: ' + (logoutResult.error || 'Unknown error'));
+        
+        // Reset logout button state
+        if (simpleLogoutBtn) {
+          simpleLogoutBtn.classList.remove('loading');
+          simpleLogoutBtn.disabled = false;
+          simpleLogoutBtn.textContent = 'Logout';
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error during logout:', error);
+      this.hideLoading();
+      this.showError('Logout failed. Please try again.');
+      
+      // Reset logout button state
+      const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
+      if (simpleLogoutBtn) {
+        simpleLogoutBtn.classList.remove('loading');
+        simpleLogoutBtn.disabled = false;
+        simpleLogoutBtn.textContent = 'Logout';
+      }
+    }
+  }
+
+  async showUserInfo() {
+    // Don't show user info section since user doesn't want user data displayed
+    // Only the simple logout button will be shown
+    console.log('User info display skipped - using simple logout button instead');
+  }
+
+  async handleLogout() {
+    try {
+      console.log('Logout button clicked...');
+      
+      // Get logout button for loading state
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.classList.add('loading');
+        logoutBtn.disabled = true;
+      }
+      
+      // Show loading overlay
+      this.showLoading('Logging out...');
+      
+      // Use LogoutManager if available, otherwise fallback to direct implementation
+      let logoutResult;
+      if (this.logoutManager) {
+        console.log('Using LogoutManager for logout...');
+        logoutResult = await this.logoutManager.logout();
+      } else {
+        console.log('LogoutManager not available, using fallback logout...');
+        logoutResult = await this.fallbackLogout();
+      }
+      
+      // Hide loading
+      this.hideLoading();
+      
+      if (logoutResult.success) {
+        console.log('Logout successful, redirecting to login...');
+        // Small delay to show success state
+        setTimeout(() => {
+          this.redirectToLogin();
+        }, 500);
+      } else {
+        console.error('Logout failed:', logoutResult.error);
+        this.showError('Logout failed: ' + (logoutResult.error || 'Unknown error'));
+        
+        // Reset logout button state
+        if (logoutBtn) {
+          logoutBtn.classList.remove('loading');
+          logoutBtn.disabled = false;
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error during logout:', error);
+      this.hideLoading();
+      this.showError('Logout failed. Please try again.');
+      
+      // Reset logout button state
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.classList.remove('loading');
+        logoutBtn.disabled = false;
+      }
+    }
+  }
+
+  async fallbackLogout() {
+    try {
+      console.log('Executing fallback logout...');
+      
+      // Get refresh token for logout API
+      const result = await chrome.storage.local.get(['refresh_token']);
+      
+      // Call logout API if we have a refresh token
+      if (result.refresh_token) {
+        try {
+          const response = await chrome.runtime.sendMessage({
+            action: 'logoutAPI',
+            refreshToken: result.refresh_token
+          });
+          
+          if (response.warning) {
+            console.warn('Logout API warning:', response.warning);
+          }
+        } catch (error) {
+          console.warn('Logout API call failed, continuing with local logout:', error);
+        }
+      }
+      
+      // Clear all authentication data
+      await this.clearAuthTokens();
+      
+      return { success: true };
+      
+    } catch (error) {
+      console.error('Error in fallback logout:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async checkAuthentication() {
+    try {
+      // Get tokens from storage
+      const result = await chrome.storage.local.get(['auth_token', 'refresh_token', 'user_id']);
+      
+      if (!result.auth_token || !result.refresh_token) {
+        console.log('No authentication tokens found');
+        return false;
+      }
+
+      // Validate token
+      const tokenData = this.parseJwt(result.auth_token);
+      if (!tokenData || !tokenData.exp) {
+        console.log('Invalid token format');
+        await this.clearAuthTokens();
+        return false;
+      }
+
+      const currentTime = Date.now() / 1000;
+      const timeUntilExpiry = tokenData.exp - currentTime;
+
+      // If token expires in less than 5 minutes, try to refresh
+      if (timeUntilExpiry < 300) { // 5 minutes
+        console.log('Token expiring soon, attempting refresh...');
+        const refreshResult = await this.refreshAuthToken(result.refresh_token, result.user_id);
+        
+        if (!refreshResult.success) {
+          console.log('Token refresh failed');
+          await this.clearAuthTokens();
+          return false;
+        }
+      }
+
+      return true;
+
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      await this.clearAuthTokens();
+      return false;
+    }
+  }
+
+  hideUserInfo() {
+    const userInfoSection = document.getElementById('userInfoSection');
+    if (userInfoSection) {
+      userInfoSection.style.display = 'none';
+      userInfoSection.innerHTML = '';
+    }
+    
+    const container = document.querySelector('.container');
+    if (container) {
+      container.classList.remove('with-user-info');
+    }
+    
+    // Also hide simple logout button
+    this.hideSimpleLogoutButton();
+  }
+
+  // Update the redirectToLogin method to hide user info
+  redirectToLogin() {
+    this.hideUserInfo();
+    const loginUrl = chrome.runtime.getURL('auth/login.html');
+    chrome.tabs.create({ url: loginUrl });
+    window.close();
+  }
+
+  // Update parseJwt method (keep existing implementation)
+  parseJwt(token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Failed to parse JWT:', error);
+      return null;
+    }
+  }
+
+  async refreshAuthToken(refreshToken, userId) {
+    try {
+      // Call background script instead of direct fetch to avoid CSP issues
+      const response = await chrome.runtime.sendMessage({
+        action: 'refreshToken',
+        refreshToken: refreshToken,
+        userId: userId
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Token refresh failed');
+      }
+
+      console.log('Auth tokens refreshed successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async clearAuthTokens() {
+    try {
+      await chrome.storage.local.remove(['auth_token', 'refresh_token', 'user_id']);
+      console.log('Auth tokens cleared');
+    } catch (error) {
+      console.error('Error clearing auth tokens:', error);
+    }
+  }
+
+  showAuthError(message) {
+  // Create a simple error display for authentication issues
+  document.body.innerHTML = `
+    <div style="
+      padding: 20px;
+      text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    ">
+      <div style="color: #ea4335; margin-bottom: 16px; font-size: 18px;">⚠️</div>
+      <div style="color: #333; margin-bottom: 16px; font-size: 14px;">
+        ${message}
+      </div>
+      <button id="retryAuthBtn" style="
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      ">
+        Retry
+      </button>
+    </div>
+  `;
+  
+  // Add event listener for retry button (no inline handlers)
+  const retryBtn = document.getElementById('retryAuthBtn');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', () => {
+      location.reload();
+    });
+  }
+}
 
   initializeElements() {
     // Mode panels
@@ -39,6 +399,9 @@ class MeetRecorderPopup {
     this.errorOverlay = document.getElementById('errorOverlay');
     this.errorMessage = document.getElementById('errorMessage');
     this.dismissErrorBtn = document.getElementById('dismissErrorBtn');
+    
+    // Simple logout button
+    this.simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
   }
 
   setupEventListeners() {
@@ -59,6 +422,11 @@ class MeetRecorderPopup {
     // Error handling
     if (this.dismissErrorBtn) {
       this.dismissErrorBtn.addEventListener('click', () => this.hideError());
+    }
+    
+    // Simple logout button
+    if (this.simpleLogoutBtn) {
+      this.simpleLogoutBtn.addEventListener('click', () => this.handleSimpleLogout());
     }
     
     // Listen for recording state changes from background
@@ -99,6 +467,11 @@ class MeetRecorderPopup {
         console.log('Microphone permission result:', message);
         this.handleMicrophonePermissionResult(message.success, message.error);
       }
+
+      // Handle authentication events
+      if (message.action === 'authEvent') {
+        this.handleAuthEvent(message.eventType, message.data);
+      }
     });
     
     // Save settings on change
@@ -108,6 +481,23 @@ class MeetRecorderPopup {
     
     if (this.microphoneToggle) {
       this.microphoneToggle.addEventListener('change', (e) => this.handleMicrophoneToggle(e));
+    }
+  }
+
+  handleAuthEvent(eventType, data) {
+    switch (eventType) {
+      case 'tokensCleared':
+        console.log('Auth tokens were cleared, redirecting to login...');
+        this.redirectToLogin();
+        break;
+        
+      case 'tokensUpdated':
+        console.log('Auth tokens were updated');
+        // Could refresh UI or show success message
+        break;
+        
+      default:
+        console.log('Unknown auth event:', eventType);
     }
   }
 
@@ -321,71 +711,21 @@ class MeetRecorderPopup {
     if (this.tabSelectionSection) {
       this.tabSelectionSection.style.display = 'block';
     }
-    
-    // Load tabs if not already loaded
-    if (this.tabSelector && this.tabSelector.children.length <= 1) {
-      this.loadTabs();
-    }
-    
+        
     this.saveSettings();
   }
 
-  async loadTabs() {
-    if (!this.tabSelector) {
-      console.error('Tab selector element not found');
-      return;
-    }
-    
-    try {
-      console.log('Loading tabs...');
-      this.tabSelector.innerHTML = '<option value="">Loading tabs...</option>';
-      
-      const tabs = await chrome.tabs.query({});
-      this.tabSelector.innerHTML = '';
-      
-      // Get current tab first
-      const currentTab = await chrome.tabs.query({ active: true, currentWindow: true });
-      
-      if (currentTab.length > 0) {
-        const option = document.createElement('option');
-        option.value = currentTab[0].id;
-        option.textContent = `● ${this.truncateText(currentTab[0].title, 40)}`;
-        option.selected = true;
-        this.tabSelector.appendChild(option);
-        console.log('Added current tab:', currentTab[0].title);
-      }
-      
-      // Add other tabs
-      tabs.forEach(tab => {
-        if (!currentTab.length || tab.id !== currentTab[0].id) {
-          const option = document.createElement('option');
-          option.value = tab.id;
-          let title = this.truncateText(tab.title || 'Untitled Tab', 40);
-          
-          // Add special indicators
-          if (tab.url && tab.url.includes('meet.google.com')) {
-            title = `🎥 ${title}`;
-          } else if (tab.url && tab.url.includes('youtube.com')) {
-            title = `📺 ${title}`;
-          }
-          
-          option.textContent = title;
-          this.tabSelector.appendChild(option);
-        }
-      });
-      
-      console.log(`Loaded ${tabs.length} tabs successfully`);
-      
-    } catch (error) {
-      console.error('Error loading tabs:', error);
-      if (this.tabSelector) {
-        this.tabSelector.innerHTML = '<option value="">Error loading tabs</option>';
-      }
-    }
-  }
+
 
 async startRecording() { 
   try {
+    // Verify authentication before starting recording
+    if (!await this.checkAuthentication()) {
+      console.log('Authentication check failed during recording start');
+      this.redirectToLogin();
+      return;
+    }
+
     const recordingType = 'tab'; // Always tab recording
     const videoQuality = '720p'; // Always 720p
 

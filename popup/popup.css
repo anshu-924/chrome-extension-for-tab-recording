@@ -27,6 +27,58 @@ body.recording-mode {
   min-height: 200px;
 }
 
+/* Simple Logout Button - Top Left */
+.simple-logout-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.simple-logout-btn:hover {
+  background: rgba(220, 38, 38, 0.95);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.simple-logout-btn:active {
+  transform: translateY(0);
+}
+
+.simple-logout-btn.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Adjust header padding when logout button is present */
+.container:has(.simple-logout-btn[style*="block"]) .header {
+  /* padding-left: 80px; Make room for logout button */
+}
+
+/* Recording mode adjustments */
+body.recording-mode .simple-logout-btn {
+  top: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recording-header {
+  padding-left: 70px;
+}
+
 /* Mode Panels */
 .mode-panel {
   position: absolute;
@@ -552,4 +604,117 @@ body.recording-mode {
   color: #6b7280;
   margin-top: 80px;
   text-align: center;
+}
+
+/* User Info Section (hidden by default since you don't want user data shown) */
+
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.logout-btn:active {
+  transform: scale(0.95);
+}
+
+.logout-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Adjust container when user info is shown */
+.container.with-user-info {
+  /* No additional styles needed, user info will push content down naturally */
+}
+
+/* Responsive adjustments for user info */
+@media (max-width: 300px) {
+  .user-info {
+    padding: 10px 12px;
+  }
+  
+  .user-name {
+    font-size: 12px;
+  }
+  
+  .user-phone {
+    font-size: 10px;
+  }
+  
+  .logout-btn {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .logout-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* Compact mode adjustments */
+body.recording-mode .user-info {
+  padding: 8px 12px;
+}
+
+body.recording-mode .user-name {
+  font-size: 11px;
+}
+
+body.recording-mode .user-phone {
+  font-size: 10px;
+}
+
+body.recording-mode .logout-btn {
+  width: 24px;
+  height: 24px;
+}
+
+body.recording-mode .logout-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Loading state for logout button */
+.logout-btn.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+/* Error state for logout button */
+.logout-btn.error {
+  background: #f59e0b;
+}
+
+.logout-btn.error:hover {
+  background: #d97706;
 }
