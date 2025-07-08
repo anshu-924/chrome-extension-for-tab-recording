@@ -136,7 +136,58 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
   color: #374151;
   margin-bottom: 12px;
 }
+/* User Profile Button Styles */
+.user-profile-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
 
+.user-profile-btn:hover {
+  background: rgba(102, 126, 234, 0.2);
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.user-profile-btn:active {
+  transform: scale(0.95);
+}
+
+.user-profile-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
+}
+
+/* Hide user profile button in recording mode */
+.container.recording-mode .user-profile-btn {
+  display: none;
+}
+
+/* Adjust container positioning to accommodate profile button */
+.container {
+  position: relative;
+  padding-top: 8px; /* Add some top padding to avoid overlap */
+}
+
+/* Ensure header has enough space */
+.header {
+  padding-top: 20px; /* Add extra padding to avoid overlap with profile button */
+}
 /* Radio Groups */
 .radio-group {
   display: flex;

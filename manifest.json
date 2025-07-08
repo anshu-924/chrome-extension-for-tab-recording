@@ -17,7 +17,9 @@
   "host_permissions": [
     "*://meet.google.com/*",
     "*://db.subspace.money/*",
-    "*://arc.vocallabs.ai/*"
+    "*://arc.vocallabs.ai/*",
+    "*://n8n.subspace.money/*",
+    "*://n8n.vocallabs.ai/*"
   ],
   
   "background": {
@@ -61,7 +63,9 @@
         "auth/login.css", 
         "auth/login.js",
         "auth/auth-manager.js",
-        "auth/logout.js"
+        "auth/logout.js",
+        "user-profile/userProfile.html",
+        "user-profile/userProfile.js"
       ],
       "matches": ["<all_urls>"]
     }

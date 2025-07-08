@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Profile - Google Meet Recorder</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .profile-container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      max-width: 700px;
+      width: 100%;
+      overflow: hidden;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .profile-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-align: center;
+      padding: 30px;
+      position: relative;
+    }
+
+    .profile-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 15px;
+      font-size: 28px;
+      backdrop-filter: blur(10px);
+      border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .profile-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .profile-subtitle {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .profile-content {
+      padding: 20px;
+    }
+
+    .profile-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-info-compact {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 13px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .recordings-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .recording-item {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .recording-item:hover {
+      background: #e9ecef;
+      transform: translateY(-1px);
+    }
+
+    .recording-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .recording-name {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+      flex: 1;
+      margin-right: 10px;
+    }
+
+    .recording-date {
+      font-size: 11px;
+      color: #666;
+      background: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .recording-details {
+      display: flex;
+      gap: 15px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .recording-detail {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .recording-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .recording-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .recording-btn:hover {
+      background: #5a67d8;
+    }
+
+    .recording-btn.download {
+      background: #28a745;
+    }
+
+    .recording-btn.download:hover {
+      background: #218838;
+    }
+
+    .loading-recordings {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .loading-spinner-small {
+      width: 30px;
+      height: 30px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    .no-recordings {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .recordings-error {
+      text-align: center;
+      padding: 20px;
+      color: #dc3545;
+      background: #f8d7da;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+
+    .retry-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .retry-btn:hover {
+      background: #5a67d8;
+    }
+
+    .profile-actions {
+      padding: 15px 20px;
+      background: #f8f9fa;
+      border-top: 1px solid #eee;
+    }
+
+    .logout-btn {
+      width: 100%;
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .logout-btn:hover {
+      background: #c82333;
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active {
+      transform: translateY(0);
+    }
+
+    .logout-btn.loading {
+      background: #6c757d;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .logout-btn.loading::after {
+      content: '';
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .loading-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    .success-message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4caf50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1001;
+    }
+
+    .success-message.show {
+      transform: translateX(0);
+    }
+
+    @media (max-width: 600px) {
+      .user-info-compact {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      
+      .recording-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+      }
+      
+      .recording-details {
+        flex-direction: column;
+        gap: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="profile-container">
+    <!-- Profile Header -->
+    <div class="profile-header">
+      <div class="profile-avatar">👤</div>
+      <div class="profile-title" id="userName">Loading...</div>
+      <div class="profile-subtitle">Google Meet Recorder User</div>
+    </div>
+
+    <!-- Profile Content -->
+    <div class="profile-content" id="profileContent">
+      <!-- Compact User Information Section -->
+      <div class="profile-section">
+        <div class="section-title">
+          📊 Account Information
+        </div>
+        
+        <div class="user-info-compact">
+          <div class="info-item" id="phoneInfo">
+            <div class="info-label">Phone Number</div>
+            <div class="info-value" id="phoneValue">Loading...</div>
+          </div>
+
+          <div class="info-item" id="emailInfo" style="display: none;">
+            <div class="info-label">Email Address</div>
+            <div class="info-value" id="emailValue">Not provided</div>
+          </div>
+
+          <div class="info-item" id="countryInfo">
+            <div class="info-label">Country</div>
+            <div class="info-value" id="countryValue">Loading...</div>
+          </div>
+
+          <div class="info-item" id="joinDateInfo">
+            <div class="info-label">Member Since</div>
+            <div class="info-value" id="joinDateValue">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recordings Section -->
+      <div class="profile-section">
+        <div class="section-title">
+          🎤 My Recordings
+          <button id="refreshRecordings" class="retry-btn" style="margin-left: auto;">Refresh</button>
+        </div>
+        
+        <div id="recordingsContainer">
+          <div class="loading-recordings">
+            <div class="loading-spinner-small"></div>
+            <div>Loading your recordings...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Actions -->
+    <div class="profile-actions">
+      <button id="logoutBtn" class="logout-btn">
+        <span>🚪</span>
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div id="loadingText">Processing...</div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div id="successMessage" class="success-message">
+    Logged out successfully!
+  </div>
+
+  <!-- Scripts -->
+  <script src="../auth/logout.js"></script>
+  <script src="../auth/auth-manager.js"></script>
+  <script src="userProfile.js"></script>
+</body>
+</html>

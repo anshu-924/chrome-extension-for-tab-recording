@@ -147,6 +147,24 @@
       box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
     }
 
+    .btn-upload-cloud {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-upload-cloud:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+    }
+
+    .btn-upload-cloud:disabled {
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: 0 4px 15px rgba(156, 163, 175, 0.3);
+    }
+
     .btn-close {
       background: rgba(255, 255, 255, 0.9);
       color: #374151;
@@ -291,6 +309,39 @@
       box-shadow: 0 10px 25px rgba(220, 38, 38, 0.2);
     }
 
+    /* Upload status indicator */
+    .upload-status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      z-index: 10000;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      transform: translateX(100%);
+      display: none;
+    }
+
+    .upload-status.show {
+      display: block;
+      transform: translateX(0);
+    }
+
+    .upload-status.success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .upload-status.error {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
     @media (max-width: 768px) {
       .header-content {
         flex-direction: column;
@@ -387,6 +438,11 @@
             <span>🎵</span>
             Download Audio
           </button>
+          
+          <button id="uploadCloudBtn" class="btn btn-upload-cloud">
+            <span>☁️</span>
+            Upload to Cloud
+          </button>
         </div>
         
         <button id="closeBtn" class="btn btn-close">
@@ -438,6 +494,11 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Upload Status Notification -->
+  <div id="uploadStatus" class="upload-status">
+    <span id="uploadStatusText">Uploading to cloud...</span>
   </div>
 
   <script src="preview.js"></script>

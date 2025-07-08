@@ -38,8 +38,8 @@ class MeetRecorderPopup {
       this.setupEventListeners();
       this.loadInitialState();
       
-      // Show simple logout button instead of user info
-      this.showSimpleLogoutButton();
+      // Show user profile button instead of logout
+      this.showUserProfileButton();
       
     } catch (error) {
       console.error('Error during authentication check:', error);
@@ -47,89 +47,44 @@ class MeetRecorderPopup {
     }
   }
 
-  // Show simple logout button when authenticated
-  showSimpleLogoutButton() {
-    const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
-    if (simpleLogoutBtn) {
-      simpleLogoutBtn.style.display = 'block';
-      console.log('Simple logout button displayed');
+  // Show user profile button when authenticated
+  showUserProfileButton() {
+    const userProfileBtn = document.getElementById('userProfileBtn');
+    if (userProfileBtn) {
+      userProfileBtn.style.display = 'block';
+      console.log('User profile button displayed');
     }
   }
 
-  // Hide simple logout button
-  hideSimpleLogoutButton() {
-    const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
-    if (simpleLogoutBtn) {
-      simpleLogoutBtn.style.display = 'none';
+  // Hide user profile button
+  hideUserProfileButton() {
+    const userProfileBtn = document.getElementById('userProfileBtn');
+    if (userProfileBtn) {
+      userProfileBtn.style.display = 'none';
     }
   }
 
-  // Handle simple logout button click
-  async handleSimpleLogout() {
+  // Handle user profile button click
+  async handleUserProfileClick() {
     try {
-      console.log('Simple logout button clicked...');
+      console.log('User profile button clicked...');
       
-      // Get logout button for loading state
-      const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
-      if (simpleLogoutBtn) {
-        simpleLogoutBtn.classList.add('loading');
-        simpleLogoutBtn.disabled = true;
-        simpleLogoutBtn.textContent = 'Logging out...';
-      }
+      // Open user profile page in new tab
+      const profileUrl = chrome.runtime.getURL('user-profile/userProfile.html');
+      chrome.tabs.create({ url: profileUrl });
       
-      // Show loading overlay
-      this.showLoading('Logging out...');
-      
-      // Use LogoutManager if available, otherwise fallback to direct implementation
-      let logoutResult;
-      if (this.logoutManager) {
-        console.log('Using LogoutManager for logout...');
-        logoutResult = await this.logoutManager.logout();
-      } else {
-        console.log('LogoutManager not available, using fallback logout...');
-        logoutResult = await this.fallbackLogout();
-      }
-      
-      // Hide loading
-      this.hideLoading();
-      
-      if (logoutResult.success) {
-        console.log('Logout successful, redirecting to login...');
-        // Small delay to show success state
-        setTimeout(() => {
-          this.redirectToLogin();
-        }, 500);
-      } else {
-        console.error('Logout failed:', logoutResult.error);
-        this.showError('Logout failed: ' + (logoutResult.error || 'Unknown error'));
-        
-        // Reset logout button state
-        if (simpleLogoutBtn) {
-          simpleLogoutBtn.classList.remove('loading');
-          simpleLogoutBtn.disabled = false;
-          simpleLogoutBtn.textContent = 'Logout';
-        }
-      }
+      console.log('User profile page opened');
       
     } catch (error) {
-      console.error('Error during logout:', error);
-      this.hideLoading();
-      this.showError('Logout failed. Please try again.');
-      
-      // Reset logout button state
-      const simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
-      if (simpleLogoutBtn) {
-        simpleLogoutBtn.classList.remove('loading');
-        simpleLogoutBtn.disabled = false;
-        simpleLogoutBtn.textContent = 'Logout';
-      }
+      console.error('Error opening user profile:', error);
+      this.showError('Failed to open user profile. Please try again.');
     }
   }
 
   async showUserInfo() {
     // Don't show user info section since user doesn't want user data displayed
-    // Only the simple logout button will be shown
-    console.log('User info display skipped - using simple logout button instead');
+    // Only the user profile button will be shown
+    console.log('User info display skipped - using user profile button instead');
   }
 
   async handleLogout() {
@@ -278,8 +233,8 @@ class MeetRecorderPopup {
       container.classList.remove('with-user-info');
     }
     
-    // Also hide simple logout button
-    this.hideSimpleLogoutButton();
+    // Also hide user profile button
+    this.hideUserProfileButton();
   }
 
   // Update the redirectToLogin method to hide user info
@@ -400,8 +355,8 @@ class MeetRecorderPopup {
     this.errorMessage = document.getElementById('errorMessage');
     this.dismissErrorBtn = document.getElementById('dismissErrorBtn');
     
-    // Simple logout button
-    this.simpleLogoutBtn = document.getElementById('simpleLogoutBtn');
+    // User profile button
+    this.userProfileBtn = document.getElementById('userProfileBtn');
   }
 
   setupEventListeners() {
@@ -424,9 +379,9 @@ class MeetRecorderPopup {
       this.dismissErrorBtn.addEventListener('click', () => this.hideError());
     }
     
-    // Simple logout button
-    if (this.simpleLogoutBtn) {
-      this.simpleLogoutBtn.addEventListener('click', () => this.handleSimpleLogout());
+    // User profile button
+    if (this.userProfileBtn) {
+      this.userProfileBtn.addEventListener('click', () => this.handleUserProfileClick());
     }
     
     // Listen for recording state changes from background
@@ -542,7 +497,7 @@ class MeetRecorderPopup {
     this.setupMode.style.display = 'flex';
     this.recordingMode.style.display = 'none';
     this.completeMode.style.display = 'none';
-    
+    this.showUserProfileButton();
     // Remove compact size
     document.body.classList.remove('recording-mode');
     document.querySelector('.container').classList.remove('recording-mode');
@@ -558,7 +513,7 @@ class MeetRecorderPopup {
     // Shrink popup size
     document.body.classList.add('recording-mode');
     document.querySelector('.container').classList.add('recording-mode');
-    
+    this.hideUserProfileButton(); // Hide user profile button in recording mode
     // Wait a moment for DOM to update, then initialize recording controls
     setTimeout(() => {
       // Re-find recording mode elements after switching
@@ -590,7 +545,7 @@ class MeetRecorderPopup {
     // Remove compact size
     document.body.classList.remove('recording-mode');
     document.querySelector('.container').classList.remove('recording-mode');
-    
+    this.showUserProfileButton();
     this.stopRecordingTimer();
     
     // Wait a moment for DOM to update, then attach event listener
