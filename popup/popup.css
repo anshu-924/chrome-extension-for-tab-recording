@@ -145,8 +145,8 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
   height: 32px;
   border: none;
   border-radius: 50%;
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
+  background: rgba(231, 222, 222, 0.91);
+  color: #c1cdeb;
   font-size: 16px;
   cursor: pointer;
   display: flex;
@@ -159,9 +159,9 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
 }
 
 .user-profile-btn:hover {
-  background: rgba(102, 126, 234, 0.2);
+  background: rgba(219, 223, 242, 0.81);
   transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(200, 207, 238, 0.599);
 }
 
 .user-profile-btn:active {
@@ -397,7 +397,7 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
 .recording-header {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
-  padding: 16px 20px;
+  padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -406,16 +406,16 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
 .recording-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .rec-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   background: white;
   border-radius: 50%;
   animation: blink 1s infinite;
@@ -428,13 +428,13 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
 
 .recording-time {
   font-family: 'Courier New', monospace;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .recording-content {
   flex: 1;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -442,20 +442,20 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
 
 .recording-info {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .recording-type {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .recording-quality, .recording-size {
-  font-size: 12px;
+  font-size: 11px;
   color: #6b7280;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .recording-controls {
@@ -464,20 +464,20 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
 }
 
 .control-btn {
-  padding: 14px 20px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   transition: all 0.2s ease;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  min-width: 120px;
+  min-width: 90px;
 }
 
 .stop-btn {
@@ -491,11 +491,11 @@ body.recording-mode .container:has(.simple-logout-btn[style*="block"]) .recordin
 }
 
 .btn-icon {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .btn-text {
-  font-size: 10px;
+  font-size: 9px;
 }
 
 /* === COMPLETE MODE === */
