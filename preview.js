@@ -276,12 +276,12 @@ class RecordingPreview {
       
       // Add audio file
       formData.append('audioFile', audioBlob, metadata.original_filename);
-      
       // Add metadata as JSON
       formData.append('metadata', JSON.stringify(metadata));
       
       // Add authentication token
       formData.append('authToken', this.authContext.authToken);
+      formData.append('userId', this.authContext.userId);
 
       console.log('Calling n8n workflow with metadata:', metadata);
 

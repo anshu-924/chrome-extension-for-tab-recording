@@ -128,18 +128,14 @@ class MeetDetector {
     this.recordingIndicator = document.createElement('div');
     this.recordingIndicator.id = 'meet-recorder-indicator';
     this.recordingIndicator.innerHTML = `
-      <div class="recorder-indicator ${this.isRecording ? 'recording' : 'ready'}">
-        <div class="indicator-dot"></div>
-        <span class="indicator-text">${this.isRecording ? 'Recording' : 'Recorder Ready'}</span>
-        <button class="indicator-btn" title="Open Google Meet Recorder">
-          ${this.isRecording ? '⏹️' : '🎥'}
-        </button>
-        <button class="close-btn" title="Close">✕</button>
-      </div>
+      <button class="record-btn ${this.isRecording ? 'recording' : 'ready'}" 
+              title="${this.isRecording ? 'Stop Recording' : 'Start Recording'}">
+        ${this.isRecording ? '⏹️' : '🔴'}
+      </button>
     `;
     
-    // Add click handlers
-    const btn = this.recordingIndicator.querySelector('.indicator-btn');
+    // Add click handler
+    const btn = this.recordingIndicator.querySelector('.record-btn');
     btn.addEventListener('click', () => {
       if (this.isRecording) {
         // Stop recording
@@ -153,16 +149,10 @@ class MeetDetector {
       }
     });
     
-    const closeBtn = this.recordingIndicator.querySelector('.close-btn');
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.removeRecordingIndicator();
-    });
-    
     // Add to page
     document.body.appendChild(this.recordingIndicator);
     
-    console.log('Google Meet Recorder: Recording indicator added');
+    console.log('Google Meet Recorder: Recording button added');
   }
 
   removeRecordingIndicator() {
@@ -177,23 +167,18 @@ class MeetDetector {
     
     if (!this.recordingIndicator) return;
     
-    const indicator = this.recordingIndicator.querySelector('.recorder-indicator');
-    const dot = this.recordingIndicator.querySelector('.indicator-dot');
-    const text = this.recordingIndicator.querySelector('.indicator-text');
-    const btn = this.recordingIndicator.querySelector('.indicator-btn');
+    const btn = this.recordingIndicator.querySelector('.record-btn');
     
     if (isRecording) {
-      indicator.classList.add('recording');
-      indicator.classList.remove('ready');
-      text.textContent = 'Recording';
+      btn.classList.add('recording');
+      btn.classList.remove('ready');
       btn.textContent = '⏹️';
       btn.title = 'Stop Recording';
     } else {
-      indicator.classList.add('ready');
-      indicator.classList.remove('recording');
-      text.textContent = 'Recorder Ready';
-      btn.textContent = '🎥';
-      btn.title = 'Open Google Meet Recorder';
+      btn.classList.add('ready');
+      btn.classList.remove('recording');
+      btn.textContent = '🔴';
+      btn.title = 'Start Recording';
     }
   }
 

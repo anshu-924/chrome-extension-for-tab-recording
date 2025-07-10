@@ -1,4 +1,4 @@
-// Login Page Controller with Complete OTP Flow
+// Login Page Controller with Complete OTP Flow and 6-Block OTP Input
 
 class LoginController {
   constructor() {
@@ -16,6 +16,7 @@ class LoginController {
     this.maxOTPAttempts = 3;
     this.resendTimer = null;
     this.resendSeconds = 30;
+    this.otpBlocks = []; // Store references to OTP input blocks
     
     console.log('LoginController initialized');
     
@@ -77,11 +78,6 @@ class LoginController {
       this.backToPhoneBtn.addEventListener('click', () => this.goBackToPhone());
     }
     
-    if (this.otpInput) {
-      this.otpInput.addEventListener('input', (e) => this.onOtpInput(e));
-      this.otpInput.addEventListener('keypress', (e) => this.onOtpKeypress(e));
-    }
-    
     if (this.resendBtn) {
       this.resendBtn.addEventListener('click', () => this.handleResendOTP());
     }
@@ -101,6 +97,153 @@ class LoginController {
     }
     
     console.log('Event listeners setup complete');
+  }
+
+  // Create 6-block OTP input interface
+  createOTPBlocks() {
+    const otpInputGroup = document.querySelector('.otp-input-group');
+    if (!otpInputGroup) return;
+
+    // Clear existing content
+    otpInputGroup.innerHTML = '';
+    this.otpBlocks = [];
+
+    // Create 6 individual input blocks
+    for (let i = 0; i < 6; i++) {
+      const block = document.createElement('input');
+      block.type = 'text';
+      block.className = 'otp-block';
+      block.maxLength = 1;
+      block.inputMode = 'numeric';
+      block.pattern = '[0-9]';
+      block.autocomplete = 'one-time-code';
+      
+      // Add event listeners for each block
+      this.setupOTPBlockListeners(block, i);
+      
+      otpInputGroup.appendChild(block);
+      this.otpBlocks.push(block);
+    }
+
+    // Focus the first block
+    if (this.otpBlocks[0]) {
+      this.otpBlocks[0].focus();
+    }
+
+    console.log('6-block OTP interface created');
+  }
+
+  // Setup event listeners for individual OTP blocks
+  setupOTPBlockListeners(block, index) {
+    // Handle input
+    block.addEventListener('input', (e) => {
+      let value = e.target.value;
+      
+      // Only allow numeric characters
+      value = value.replace(/[^\d]/g, '');
+      
+      if (value.length > 1) {
+        value = value.charAt(0);
+      }
+      
+      e.target.value = value;
+      
+      // Update OTP value
+      this.updateOTPValue();
+      
+      // Move to next block if value entered
+      if (value && index < 5) {
+        this.otpBlocks[index + 1].focus();
+      }
+      
+      // Auto-submit when all 6 digits entered
+      if (this.otpValue.length === 6 && !this.verifyOtpBtn.disabled) {
+        setTimeout(() => this.handleVerifyOTP(), 100);
+      }
+    });
+
+    // Handle keydown for navigation
+    block.addEventListener('keydown', (e) => {
+      // Handle backspace
+      if (e.key === 'Backspace') {
+        if (!e.target.value && index > 0) {
+          // Move to previous block if current is empty
+          this.otpBlocks[index - 1].focus();
+          this.otpBlocks[index - 1].select();
+        }
+      }
+      
+      // Handle arrow keys
+      if (e.key === 'ArrowLeft' && index > 0) {
+        e.preventDefault();
+        this.otpBlocks[index - 1].focus();
+      }
+      
+      if (e.key === 'ArrowRight' && index < 5) {
+        e.preventDefault();
+        this.otpBlocks[index + 1].focus();
+      }
+      
+      // Handle Enter key
+      if (e.key === 'Enter' && !this.verifyOtpBtn.disabled) {
+        this.handleVerifyOTP();
+      }
+    });
+
+    // Handle paste
+    block.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasteData = e.clipboardData.getData('text');
+      const digits = pasteData.replace(/[^\d]/g, '').substring(0, 6);
+      
+      if (digits.length > 0) {
+        // Fill blocks with pasted digits
+        for (let i = 0; i < 6; i++) {
+          if (this.otpBlocks[i] && digits[i]) {
+            this.otpBlocks[i].value = digits[i];
+          } else if (this.otpBlocks[i]) {
+            this.otpBlocks[i].value = '';
+          }
+        }
+        
+        // Update OTP value and focus appropriate block
+        this.updateOTPValue();
+        
+        const focusIndex = Math.min(digits.length, 5);
+        this.otpBlocks[focusIndex].focus();
+        
+        // Auto-submit if 6 digits pasted
+        if (digits.length === 6 && !this.verifyOtpBtn.disabled) {
+          setTimeout(() => this.handleVerifyOTP(), 100);
+        }
+      }
+    });
+
+    // Handle focus
+    block.addEventListener('focus', (e) => {
+      e.target.select();
+    });
+  }
+
+  // Update OTP value from blocks
+  updateOTPValue() {
+    this.otpValue = this.otpBlocks.map(block => block.value).join('');
+    this.validateOtpForm();
+    console.log('OTP value updated:', this.otpValue);
+  }
+
+  // Clear all OTP blocks
+  clearOTPBlocks() {
+    this.otpBlocks.forEach(block => {
+      block.value = '';
+    });
+    this.otpValue = '';
+    this.validateOtpForm();
+    
+    // Focus first block
+    if (this.otpBlocks[0]) {
+      this.otpBlocks[0].focus();
+    }
   }
 
   // Load phone codes from API via background script
@@ -212,36 +355,6 @@ class LoginController {
     }
   }
 
-  // Handle OTP input
-  onOtpInput(event) {
-    let value = event.target.value;
-    
-    // Only allow numeric characters
-    value = value.replace(/[^\d]/g, '');
-    
-    // Limit to 6 digits
-    if (value.length > 6) {
-      value = value.substring(0, 6);
-    }
-    
-    this.otpValue = value;
-    event.target.value = value;
-    
-    this.validateOtpForm();
-    
-    // Auto-submit when 6 digits entered
-    if (value.length === 6 && !this.verifyOtpBtn.disabled) {
-      setTimeout(() => this.handleVerifyOTP(), 100);
-    }
-  }
-
-  // Handle Enter key in OTP input
-  onOtpKeypress(event) {
-    if (event.key === 'Enter' && !this.verifyOtpBtn.disabled) {
-      this.handleVerifyOTP();
-    }
-  }
-
   // Validate phone form
   validatePhoneForm() {
     const isValid = this.selectedCountryCode && 
@@ -331,13 +444,12 @@ class LoginController {
       this.phoneDisplay.textContent = this.formatPhoneNumber(this.fullPhoneNumber);
     }
     
+    // Create OTP blocks interface
+    this.createOTPBlocks();
+    
     // Reset OTP state
     this.otpValue = '';
     this.otpAttempts = 0;
-    if (this.otpInput) {
-      this.otpInput.value = '';
-      this.otpInput.focus();
-    }
     
     // Update attempts display
     this.updateAttemptsDisplay();
@@ -345,7 +457,7 @@ class LoginController {
     // Start resend timer
     this.startResendTimer();
     
-    console.log('Switched to OTP verification step');
+    console.log('Switched to OTP verification step with 6-block interface');
   }
 
   // Handle verify OTP
@@ -415,13 +527,8 @@ class LoginController {
       this.updateAttemptsDisplay();
       this.showError(errorMessage);
       
-      // Clear OTP input
-      if (this.otpInput) {
-        this.otpInput.value = '';
-        this.otpInput.focus();
-      }
-      this.otpValue = '';
-      this.validateOtpForm();
+      // Clear OTP blocks
+      this.clearOTPBlocks();
     }
   }
 
@@ -522,13 +629,8 @@ class LoginController {
       this.otpAttempts = 0;
       this.updateAttemptsDisplay();
       
-      // Clear OTP input
-      if (this.otpInput) {
-        this.otpInput.value = '';
-        this.otpInput.focus();
-      }
-      this.otpValue = '';
-      this.validateOtpForm();
+      // Clear OTP blocks
+      this.clearOTPBlocks();
       
       this.setLoadingState(false);
       
@@ -552,6 +654,7 @@ class LoginController {
     this.otpValue = '';
     this.otpAttempts = 0;
     this.requestId = null;
+    this.otpBlocks = [];
     
     // Focus phone input
     if (this.phoneInput) {
@@ -578,14 +681,12 @@ class LoginController {
     this.otpValue = '';
     this.otpAttempts = 0;
     this.requestId = null;
+    this.otpBlocks = [];
     
     // Clear inputs
     if (this.phoneInput) {
       this.phoneInput.value = '';
       this.phoneInput.focus();
-    }
-    if (this.otpInput) {
-      this.otpInput.value = '';
     }
     
     this.validatePhoneForm();

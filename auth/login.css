@@ -60,7 +60,6 @@
   box-shadow: none;
 }
 /* Login Page Styles */
-/* Login Page Styles */
 
 * {
   margin: 0;
@@ -249,7 +248,165 @@ body {
 }
 
 /* OTP Input */
+/* 6-Block OTP Input Styles - Add this to your login.css */
+
+/* Update the OTP input group to display blocks in a row */
 .otp-input-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+/* Individual OTP block styles */
+.otp-block {
+  width: 48px;
+  height: 56px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.2s ease;
+  font-family: 'Courier New', monospace;
+  color: #000000 !important;
+  background: white;
+  outline: none;
+}
+
+/* Focus state for OTP blocks */
+.otp-block:focus {
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+  transform: scale(1.05);
+}
+
+/* Filled state for OTP blocks */
+.otp-block:not(:placeholder-shown) {
+  border-color: #34a853;
+  background: rgba(52, 168, 83, 0.05);
+}
+
+/* Hover state for OTP blocks */
+.otp-block:hover:not(:focus) {
+  border-color: #4285f4;
+}
+
+/* Error state for OTP blocks */
+.otp-block.error {
+  border-color: #ea4335;
+  background: rgba(234, 67, 53, 0.05);
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Shake animation for error state */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Loading state for OTP blocks */
+.otp-block:disabled {
+  background: #f5f5f5;
+  color: #000000 !important;
+  cursor: not-allowed;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 480px) {
+  .otp-input-group {
+    gap: 8px;
+    margin: 12px 0;
+  }
+  
+  .otp-block {
+    width: 40px;
+    height: 48px;
+    font-size: 20px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+  .otp-input-group {
+    gap: 6px;
+  }
+  
+  .otp-block {
+    width: 36px;
+    height: 44px;
+    font-size: 18px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .otp-block {
+    border-width: 3px;
+    border-color: #000;
+  }
+  
+  .otp-block:focus {
+    border-color: #4285f4;
+    box-shadow: 0 0 0 2px #4285f4;
+  }
+  
+  .otp-block:not(:placeholder-shown) {
+    border-color: #34a853;
+  }
+  
+  .otp-block.error {
+    border-color: #ea4335;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .otp-block {
+    transition: none;
+  }
+  
+  .otp-block:focus {
+    transform: none;
+  }
+  
+  .otp-block.error {
+    animation: none;
+  }
+}
+
+/* Hide the original single OTP input if it still exists */
+.otp-input {
+  display: none !important;
+}
+
+/* Additional styling for better visual feedback */
+.otp-block::selection {
+  background: #4285f4;
+  color: white;
+}
+
+/* Animation for when blocks are filled */
+.otp-block.filled {
+  animation: fillSuccess 0.3s ease-out;
+}
+
+@keyframes fillSuccess {
+  0% {
+    transform: scale(1);
+    background: white;
+  }
+  50% {
+    transform: scale(1.1);
+    background: rgba(52, 168, 83, 0.1);
+  }
+  100% {
+    transform: scale(1);
+    background: rgba(52, 168, 83, 0.05);
+  }
+}
+/* .otp-input-group {
   display: flex;
   justify-content: center;
 }
@@ -280,7 +437,7 @@ body {
   font-size: 14px;
   font-weight: normal;
   font-family: inherit;
-}
+} */
 
 .input-hint {
   font-size: 12px;
