@@ -1091,6 +1091,7 @@ async function startTabRecording(options) {
     const streamId = await chrome.tabCapture.getMediaStreamId({
       targetTabId: options.tabId,
     });
+    console.log("Got Tab stream ID:", streamId);
 
     if (!streamId) {
       throw new Error(
@@ -1098,14 +1099,13 @@ async function startTabRecording(options) {
       );
     }
 
-    console.log("Got tab stream ID:", streamId);
-
     // Send to offscreen document and wait for response
     return new Promise((resolve) => {
       chrome.runtime.sendMessage(
         {
           action: "startTabRecording",
-          streamId: streamId,
+          target: "offscreen",
+          streamId: streamId, 
           options: options,
         },
         (response) => {

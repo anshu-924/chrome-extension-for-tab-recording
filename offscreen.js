@@ -67,7 +67,7 @@ class MeetRecorderOffscreen {
 
   async startTabRecording(streamId, options) {
     try {
-      console.log('Starting tab recording with stream ID:', streamId);
+      console.log('Starting tab recording with tabId not stream ID:', streamId);
       
       // Reset state
       this.recordedChunks = [];
@@ -79,7 +79,6 @@ class MeetRecorderOffscreen {
       this.totalPausedTime = 0;
       this.lastPauseTime = null;
       this.recordingStartTime = Date.now();
-      
       // Create combined stream and separate audio-only stream
       const { combinedStream, audioOnlyStream } = await this.createTabCombinedStreamWithAudio(streamId, options);
       this.currentStream = combinedStream;
