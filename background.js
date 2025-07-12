@@ -1042,6 +1042,15 @@ async function handleStartRecording(options, sendResponse) {
       return;
     }
 
+    // Validate recording options
+    if (!options.tabId) {
+      sendResponse({
+        success: false,
+        error: "No tab specified for recording. Please try again.",
+      });
+      return;
+    }
+
     await createOffscreenDocument();
 
     // Update recording state first
@@ -1049,7 +1058,7 @@ async function handleStartRecording(options, sendResponse) {
       isRecording: false, // Will be set to true after successful start
       isPaused: false,
       recordingType: options.recordingType,
-      currentTabId: options.tabId || null,
+      currentTabId: options.tabId,
       recordingStartTime: null, // Will be set after start
       recordingData: null,
     };
@@ -1057,49 +1066,128 @@ async function handleStartRecording(options, sendResponse) {
     // Store recording options
     await chrome.storage.session.set({ currentRecordingOptions: options });
 
-    // Start appropriate recording type
-    let result;
-    if (options.recordingType === "tab") {
-      result = await startTabRecording(options);
-    }
+    // Start tab recording with enhanced error handling
+    console.log("Attempting to start tab recording with options:", options);
+    const result = await startTabRecording(options);
 
     if (result.success) {
       recordingState.isRecording = true;
       recordingState.recordingStartTime = Date.now();
       updateBadge("REC");
       notifyPopupStateChange();
+      
+      console.log("Recording started successfully");
       sendResponse({
         success: true,
-        message: "Recording started successfully with audio-only stream",
+        message: "Recording started successfully",
       });
     } else {
+      console.error("Failed to start recording:", result.error);
       resetRecordingState();
-      sendResponse({ success: false, error: result.error });
+      sendResponse({ 
+        success: false, 
+        error: result.error 
+      });
     }
   } catch (error) {
-    console.error("Error starting recording:", error);
+    console.error("Error in handleStartRecording:", error);
     resetRecordingState();
-    sendResponse({ success: false, error: error.message });
+    sendResponse({ 
+      success: false, 
+      error: `Recording failed: ${error.message}` 
+    });
   }
 }
 
 // Start tab recording
+// Enhanced tab recording with better error handling and validation
 async function startTabRecording(options) {
   try {
     console.log("Starting tab recording for tab:", options.tabId);
 
-    const streamId = await chrome.tabCapture.getMediaStreamId({
-      targetTabId: options.tabId,
-    });
-    console.log("Got Tab stream ID:", streamId);
-
-    if (!streamId) {
-      throw new Error(
-        "Failed to get tab stream ID - make sure the tab has audio/video content"
-      );
+    // Step 1: Validate the tab exists and is accessible
+    let targetTab;
+    try {
+      targetTab = await chrome.tabs.get(options.tabId);
+      console.log("Target tab details:", {
+        id: targetTab.id,
+        url: targetTab.url,
+        title: targetTab.title,
+        active: targetTab.active
+      });
+    } catch (tabError) {
+      console.error("Failed to get tab details:", tabError);
+      return {
+        success: false,
+        error: "Cannot access the target tab. Please ensure the tab is still open and try again."
+      };
     }
 
-    // Send to offscreen document and wait for response
+    // Step 2: Validate tab is not a Chrome internal page
+    if (targetTab.url.startsWith('chrome://') || 
+        targetTab.url.startsWith('chrome-extension://') ||
+        targetTab.url.startsWith('edge://') ||
+        targetTab.url.startsWith('about:')) {
+      return {
+        success: false,
+        error: "Cannot record Chrome internal pages. Please navigate to a regular webpage and try again."
+      };
+    }
+
+    // Step 3: Ensure tab is active (required for tabCapture)
+    if (!targetTab.active) {
+      console.log("Target tab is not active, switching to it...");
+      try {
+        await chrome.tabs.update(options.tabId, { active: true });
+        // Wait a moment for tab to become active
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (switchError) {
+        console.error("Failed to switch to target tab:", switchError);
+        return {
+          success: false,
+          error: "Cannot switch to the target tab. Please click on the tab you want to record and try again."
+        };
+      }
+    }
+
+    // Step 4: Get the media stream ID with enhanced error handling
+    let streamId;
+    try {
+      console.log("from background.js Requesting media stream ID for tab :", options.tabId);
+      
+      streamId = await chrome.tabCapture.getMediaStreamId({
+        targetTabId: options.tabId,
+      });
+      
+      console.log("in background.js Got Tab stream ID:", streamId);
+      
+      if (!streamId) {
+        throw new Error("Failed to get stream ID - the extension may not have been invoked on this tab");
+      }
+      
+    } catch (streamError) {
+      console.error("Tab capture stream ID error:", streamError);
+      
+      // Provide specific error messages based on the error
+      let errorMessage = "Failed to start recording. ";
+      
+      if (streamError.message.includes("not been invoked")) {
+        errorMessage += "Please open this extension popup on the tab you want to record, then try again.";
+      } else if (streamError.message.includes("Chrome pages")) {
+        errorMessage += "Cannot record Chrome internal pages.";
+      } else if (streamError.message.includes("permission")) {
+        errorMessage += "Recording permission was denied.";
+      } else {
+        errorMessage += streamError.message;
+      }
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+
+    // Step 5: Send to offscreen document and wait for response
     return new Promise((resolve) => {
       chrome.runtime.sendMessage(
         {
@@ -1110,29 +1198,30 @@ async function startTabRecording(options) {
         },
         (response) => {
           if (chrome.runtime.lastError) {
-            console.error(
-              "Error sending to offscreen:",
-              chrome.runtime.lastError
-            );
+            console.error("Error sending to offscreen:", chrome.runtime.lastError);
             resolve({
               success: false,
-              error: chrome.runtime.lastError.message,
+              error: `Offscreen communication error: ${chrome.runtime.lastError.message}`,
             });
           } else {
             console.log("Offscreen response:", response);
             resolve(
               response || {
                 success: false,
-                error: "No response from offscreen",
+                error: "No response from offscreen document",
               }
             );
           }
         }
       );
     });
+    
   } catch (error) {
     console.error("Tab recording error:", error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: `Recording setup failed: ${error.message}` 
+    };
   }
 }
 

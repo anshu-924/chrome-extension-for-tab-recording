@@ -680,6 +680,13 @@ async startRecording() {
       this.redirectToLogin();
       return;
     }
+    
+    // CRITICAL: Validate current tab BEFORE getting streamId
+    const currentTab = await this.validateCurrentTab();
+    if (!currentTab.success) {
+      this.showError(currentTab.error);
+      return;
+    }
 
     const recordingType = 'tab'; // Always tab recording
     const videoQuality = '720p'; // Always 720p
@@ -688,23 +695,11 @@ async startRecording() {
       recordingType: recordingType,
       videoQuality: videoQuality,
       includeDeviceAudio: this.deviceAudioToggle.checked,
-      includeMicrophone: this.microphoneToggle.checked
+      includeMicrophone: this.microphoneToggle.checked,
+      tabId: currentTab.tab.id // Use validated tab ID
     };
 
-    // Get current active tab automatically
-    try {
-      const currentTab = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!currentTab.length || !currentTab[0].id) {
-        this.showError('No active tab found to record');
-        return;
-      }
-      options.tabId = currentTab[0].id;
-      console.log('Recording current active tab:', currentTab[0].title);
-    } catch (tabError) {
-      console.error('Error getting current tab:', tabError);
-      this.showError('Failed to get current tab for recording');
-      return;
-    }
+    console.log('Recording validated tab:', currentTab.tab.title, 'ID:', currentTab.tab.id);
 
     // If microphone is enabled, test permission first
     if (options.includeMicrophone) {
@@ -757,6 +752,81 @@ async startRecording() {
     this.hideLoading();
     console.error('Error starting recording:', error);
     this.showError('Failed to start recording: ' + error.message);
+  }
+}
+
+// NEW METHOD: Validate current tab for recording
+async validateCurrentTab() {
+  try {
+    // Get current active tab
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tabs.length || !tabs[0].id) {
+      return {
+        success: false,
+        error: 'No active tab found. Please ensure a tab is selected and try again.'
+      };
+    }
+
+    const currentTab = tabs[0];
+    console.log('Current tab details:', {
+      id: currentTab.id,
+      url: currentTab.url,
+      title: currentTab.title
+    });
+
+    // Check if it's a Chrome internal page (cannot be captured)
+    if (currentTab.url.startsWith('chrome://') || 
+        currentTab.url.startsWith('chrome-extension://') ||
+        currentTab.url.startsWith('edge://') ||
+        currentTab.url.startsWith('about:')) {
+      return {
+        success: false,
+        error: 'Cannot record Chrome internal pages. Please navigate to a regular webpage (like Google Meet) and try again.'
+      };
+    }
+
+    // Check if it's a Google Meet page (recommended)
+    const isMeetPage = currentTab.url.includes('meet.google.com');
+    
+    if (!isMeetPage) {
+      // Show warning but allow recording
+      console.warn('Current tab is not a Google Meet page:', currentTab.url);
+      
+      // You could show a confirmation dialog here
+      const shouldContinue = confirm(
+        `You're about to record: "${currentTab.title}"\n\n` +
+        `This doesn't appear to be a Google Meet page. Continue anyway?`
+      );
+      
+      if (!shouldContinue) {
+        return {
+          success: false,
+          error: 'Recording cancelled by user.'
+        };
+      }
+    }
+
+    // Additional validation: Check if tab has content
+    if (!currentTab.url || currentTab.url === 'about:blank') {
+      return {
+        success: false,
+        error: 'Cannot record empty or blank tabs. Please navigate to a webpage first.'
+      };
+    }
+
+    return {
+      success: true,
+      tab: currentTab,
+      isMeetPage: isMeetPage
+    };
+
+  } catch (error) {
+    console.error('Error validating current tab:', error);
+    return {
+      success: false,
+      error: 'Failed to validate current tab: ' + error.message
+    };
   }
 }
 
