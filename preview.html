@@ -24,18 +24,20 @@
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 20px;
+      padding: 16px 20px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
 
     .header-content {
       max-width: 1200px;
       margin: 0 auto;
+    }
+
+    .header-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 20px;
+      margin-bottom: 12px;
     }
 
     .header-title {
@@ -45,7 +47,7 @@
     }
 
     .header-title h1 {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       -webkit-background-clip: text;
@@ -54,60 +56,50 @@
     }
 
     .header-title .icon {
-      font-size: 32px;
+      font-size: 28px;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
     }
 
     .header-controls {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
     .warning-message {
       background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
       color: #92400e;
-      padding: 12px 20px;
-      border-radius: 25px;
-      border: 2px solid #fbbf24;
-      font-size: 14px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid #fbbf24;
+      font-size: 12px;
       font-weight: 500;
       display: flex;
       align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
-    }
-
-    .download-section {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
+      flex: 1;
+      min-width: 300px;
     }
 
     .btn {
-      padding: 12px 24px;
+      padding: 8px 16px;
       border: none;
-      border-radius: 25px;
-      font-size: 14px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       transition: all 0.3s ease;
       text-decoration: none;
-      min-width: 140px;
+      min-width: 100px;
       justify-content: center;
       position: relative;
       overflow: hidden;
+      white-space: nowrap;
     }
 
     .btn::before {
@@ -128,47 +120,47 @@
     .btn-download {
       background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: white;
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
 
     .btn-download:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     }
 
     .btn-download-audio {
       background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
       color: white;
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
     }
 
     .btn-download-audio:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
     }
 
     .btn-upload-cloud {
       background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
       color: white;
-      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
     }
 
     .btn-upload-cloud:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
     }
 
     .btn-upload-cloud:disabled {
       background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
       cursor: not-allowed;
       transform: none !important;
-      box-shadow: 0 4px 15px rgba(156, 163, 175, 0.3);
+      box-shadow: 0 2px 8px rgba(156, 163, 175, 0.2);
     }
 
     .btn-close {
       background: rgba(255, 255, 255, 0.9);
       color: #374151;
-      border: 2px solid rgba(229, 231, 235, 0.5);
+      border: 1px solid rgba(229, 231, 235, 0.5);
       backdrop-filter: blur(10px);
     }
 
@@ -187,7 +179,7 @@
       flex: 1;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 40px 20px;
+      padding: 30px 20px;
       width: 100%;
     }
 
@@ -197,7 +189,7 @@
       border-radius: 20px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
       overflow: hidden;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
@@ -236,37 +228,42 @@
     }
 
     .details-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 30px;
-      padding: 40px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      gap: 20px;
+      padding: 30px 20px;
+      flex-wrap: wrap;
     }
 
     .detail-card {
       text-align: center;
-      padding: 20px;
-      border-radius: 16px;
+      padding: 16px 20px;
+      border-radius: 12px;
       background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
       border: 1px solid rgba(226, 232, 240, 0.5);
       transition: all 0.3s ease;
+      flex: 1;
+      min-width: 120px;
+      max-width: 180px;
     }
 
     .detail-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
     }
 
     .detail-label {
-      font-size: 12px;
+      font-size: 10px;
       color: #64748b;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
       font-weight: 600;
     }
 
     .detail-value {
-      font-size: 28px;
+      font-size: 20px;
       font-weight: 800;
       color: #1e293b;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -343,30 +340,29 @@
     }
 
     @media (max-width: 768px) {
-      .header-content {
+      .header-top {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
       }
 
       .header-controls {
         flex-direction: column;
-        gap: 12px;
-      }
-
-      .download-section {
-        flex-direction: column;
         gap: 8px;
-        width: 100%;
       }
 
       .warning-message {
+        min-width: auto;
         text-align: center;
         border-radius: 12px;
+        font-size: 11px;
       }
 
       .btn {
         width: 100%;
         justify-content: center;
+        font-size: 11px;
+        padding: 8px 12px;
       }
 
       .container {
@@ -374,42 +370,58 @@
       }
 
       .details-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-        padding: 30px 20px;
+        flex-direction: column;
+        gap: 12px;
+        padding: 20px;
       }
 
       .detail-card {
-        padding: 24px;
+        max-width: none;
+        width: 100%;
+        padding: 12px 16px;
       }
 
-      .header-title h1 {
-        font-size: 24px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .header-title .icon {
-        font-size: 24px;
+      .detail-value {
+        font-size: 18px;
       }
 
       .header-title h1 {
         font-size: 20px;
       }
+    }
+
+    @media (max-width: 480px) {
+      .header-title .icon {
+        font-size: 22px;
+      }
+
+      .header-title h1 {
+        font-size: 18px;
+      }
 
       .warning-message {
-        font-size: 12px;
-        padding: 10px 16px;
+        font-size: 10px;
+        padding: 6px 12px;
       }
 
       .btn {
-        padding: 10px 20px;
-        font-size: 13px;
-        min-width: 120px;
+        padding: 6px 10px;
+        font-size: 10px;
+        min-width: 80px;
       }
 
-      .download-section {
-        gap: 6px;
+      .detail-value {
+        font-size: 16px;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .header-controls {
+        flex-wrap: nowrap;
+      }
+      
+      .details-grid {
+        flex-wrap: nowrap;
       }
     }
   </style>
@@ -417,38 +429,38 @@
 <body>
   <div class="header">
     <div class="header-content">
-      <div class="header-title">
-        <span class="icon">🎥</span>
-        <h1>Recording Preview</h1>
-      </div>
-      
-      <div class="header-controls">
-        <div class="warning-message">
-          <span>⚠️</span>
-          <strong>Warning:</strong> Closing this tab will delete the recording. Please save it first!
+      <div class="header-top">
+        <div class="header-title">
+          <span class="icon">🎥</span>
+          <h1>Recording Preview</h1>
         </div>
         
-        <div class="download-section">
+        <div class="header-controls">
           <button id="downloadBtn" class="btn btn-download">
             <span>💾</span>
-            Download Video
+            Download Video+Audio Locally
           </button>
           
           <button id="downloadAudioBtn" class="btn btn-download-audio">
             <span>🎵</span>
-            Download Audio
+            Download Audio Locally
           </button>
           
           <button id="uploadCloudBtn" class="btn btn-upload-cloud">
             <span>☁️</span>
-            Upload to Cloud
+            Upload Audio to Cloud
+          </button>
+
+          <button id="closeBtn" class="btn btn-close">
+            <span>✕</span>
+            Close
           </button>
         </div>
-        
-        <button id="closeBtn" class="btn btn-close">
-          <span>✕</span>
-          Close Preview
-        </button>
+      </div>
+      
+      <div class="warning-message">
+        <span>⚠️</span>
+        <strong>Warning:</strong> Closing this tab will delete the recording. Please save it first!
       </div>
     </div>
   </div>

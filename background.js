@@ -594,10 +594,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log("ALL video and audio streams released:", message.message);
       break;
 
-    case "meetSessionDetected":
-      handleMeetDetection(message, sender);
-      break;
-
     case "tabClosing":
       handleTabClosing(message.tabId);
       break;
@@ -641,10 +637,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
     case "getUserRecordings":
       handleGetUserRecordings(sendResponse);
-      return true;
-
-    case "downloadRecordingFromS3":
-      handleDownloadRecording(message.recordingKey, sendResponse);
       return true;
 
     default:
@@ -850,56 +842,6 @@ async function handleGetUserRecordings(sendResponse) {
     });
   } catch (error) {
     console.error("Background: Error loading recordings:", error);
-    sendResponse({
-      success: false,
-      error: error.message,
-    });
-  }
-}
-
-// Handler for downloading recordings
-async function handleDownloadRecording(recordingKey, sendResponse) {
-  try {
-    console.log("Background: Getting download URL for recording:", recordingKey);
-
-    // Get auth token from storage
-    const result = await chrome.storage.local.get(['auth_token']);
-    if (!result.auth_token) {
-      throw new Error('No authentication token found');
-    }
-
-    const response = await fetch("https://n8n.subspace.money/webhook/download-recording", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        authToken: result.auth_token,
-        recordingKey: recordingKey
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || "Failed to get download URL");
-    }
-
-    console.log("Background: Download URL generated successfully");
-
-    sendResponse({
-      success: true,
-      downloadUrl: data.data.downloadUrl,
-      filename: data.data.filename,
-      expiresIn: data.data.expiresIn,
-      expiresAt: data.data.expiresAt
-    });
-  } catch (error) {
-    console.error("Background: Error getting download URL:", error);
     sendResponse({
       success: false,
       error: error.message,
@@ -1172,7 +1114,7 @@ async function startTabRecording(options) {
       let errorMessage = "Failed to start recording. ";
       
       if (streamError.message.includes("not been invoked")) {
-        errorMessage += "Please open this extension popup on the tab you want to record, then try again.";
+        errorMessage += "Please try to start the extension from the icon in the extensions section.";
       } else if (streamError.message.includes("Chrome pages")) {
         errorMessage += "Cannot record Chrome internal pages.";
       } else if (streamError.message.includes("permission")) {
@@ -1490,20 +1432,6 @@ function handleMicrophoneAccessFailed(message, sender) {
     });
 }
 
-// Handle Meet session detection
-function handleMeetDetection(message, sender) {
-  console.log("Meet session detected:", message);
-
-  // Store Meet info for UI
-  chrome.storage.session.set({
-    activeMeetSession: {
-      tabId: sender.tab.id,
-      url: message.url,
-      title: message.title,
-      timestamp: Date.now(),
-    },
-  });
-}
 
 // Handle recording completion from offscreen document
 function handleRecordingComplete(message, sender) {

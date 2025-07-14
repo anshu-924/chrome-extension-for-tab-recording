@@ -106,92 +106,111 @@ class UserProfileController {
     }
   }
 
-// Load user recordings via background script
-async loadUserRecordings() {
-  try {
-    if (this.recordingsLoading) return;
+  // Load user recordings via background script
+  async loadUserRecordings() {
+    try {
+      if (this.recordingsLoading) return;
 
-    this.recordingsLoading = true;
-    this.showRecordingsLoading();
+      this.recordingsLoading = true;
+      this.showRecordingsLoading();
 
-    console.log("Loading user recordings...");
+      console.log("Loading user recordings...");
 
-    // Call background script to fetch recordings (avoids CORS issues)
-    const response = await chrome.runtime.sendMessage({
-      action: "getUserRecordings",
-    });
+      // Call background script to fetch recordings (avoids CORS issues)
+      const response = await chrome.runtime.sendMessage({
+        action: "getUserRecordings",
+      });
 
-    console.log("Raw response from background:", response); // Debug log
+      console.log("Raw response from background:", response); // Debug log
 
-    if (!response.success) {
-      throw new Error(response.error || "Failed to fetch recordings");
+      if (!response.success) {
+        throw new Error(response.error || "Failed to fetch recordings");
+      }
+
+      // Store recordings for later use
+      this.recordings = response.recordings || [];
+
+      // Pass the full response object to displayRecordings
+      this.displayRecordings(response);
+
+      console.log(`Loaded ${this.recordings.length} recordings`);
+    } catch (error) {
+      console.error("Error loading recordings:", error);
+      this.showRecordingsError(error.message);
+    } finally {
+      this.recordingsLoading = false;
     }
-
-    // Store recordings for later use
-    this.recordings = response.recordings || [];
-    
-    // Pass the full response object to displayRecordings
-    this.displayRecordings(response);
-
-    console.log(`Loaded ${this.recordings.length} recordings`);
-  } catch (error) {
-    console.error("Error loading recordings:", error);
-    this.showRecordingsError(error.message);
-  } finally {
-    this.recordingsLoading = false;
   }
-}
 
-// Display recordings in the UI
-displayRecordings(responseData) {
-  try {
-    console.log('Raw response data:', responseData); // Debug log
-    
-    // Handle response being an array or object
-    let response;
-    if (Array.isArray(responseData)) {
-      response = responseData[0]; // Take first element if it's an array
-    } else {
-      response = responseData;
-    }
-    
-    console.log('Processed response:', response); // Debug log
-    
-    // Extract recordings from response object
-    const recordings = response?.recordings || [];
-    
-    console.log('Extracted recordings:', recordings); // Debug log
-    
-    if (!recordings || recordings.length === 0) {
-      this.recordingsContainer.innerHTML = `
+  // Display recordings in the UI
+  displayRecordings(responseData) {
+    try {
+      console.log("Raw response data:", responseData); // Debug log
+
+      // Handle response being an array or object
+      let response;
+      if (Array.isArray(responseData)) {
+        response = responseData[0]; // Take first element if it's an array
+      } else {
+        response = responseData;
+      }
+
+      console.log("Processed response:", response); // Debug log
+
+      // Extract recordings from response object
+      const recordings = response?.recordings || [];
+
+      console.log("Extracted recordings:", recordings); // Debug log
+
+      if (!recordings || recordings.length === 0) {
+        this.recordingsContainer.innerHTML = `
         <div class="no-recordings">
           <div style="font-size: 48px; margin-bottom: 15px;">🎤</div>
           <div style="font-weight: 600; margin-bottom: 5px;">No recordings yet</div>
           <div style="font-size: 12px; color: #666;">Your Meet recordings will appear here</div>
         </div>
       `;
-      return;
-    }
+        return;
+      }
 
-    // Sort recordings by date (newest first) - handle your specific date format
-    const sortedRecordings = recordings.sort((a, b) => {
-      const dateA = new Date(a.created_at || 0);
-      const dateB = new Date(b.created_at || 0);
-      return dateB - dateA;
-    });
+      // Sort recordings by date (newest first) - handle your specific date format
+      const sortedRecordings = recordings.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateB - dateA;
+      });
 
-    const recordingsHTML = sortedRecordings
-      .map((recording, index) => {
-        // Extract filename from recording_url
-        const fileName = this.extractFileName(recording.recording_url) || `Recording ${index + 1}`;
-        const fileSize = "Unknown size"; // Your API doesn't provide size
-        const uploadDate = this.formatDate(recording.created_at);
-        const duration = this.extractDuration(fileName);
-        
-        // Get recording URL from your specific property
-        const recordingUrl = recording.recording_url;
+      const recordingsHTML = sortedRecordings
+        .map((recording, index) => {
+          // Extract filename from recording_url
+          const fileNameRaw =
+            this.extractFileName(recording.recording_url) ||
+            `Recording ${index + 1}`;
 
-        return `
+          // Extract date and time from filename
+          const date = fileNameRaw.substring(0, 10);
+          const time = fileNameRaw.substring(11, 19);
+
+          // Build display name
+          const fileName = `audio-Date-${date}-Time-${time}-UTC`;
+
+          const uploadDate = this.formatDate(recording.created_at);
+
+          const fileSize = recording.recording_size
+            ? `${recording.recording_size} KB`
+            : "Unknown size";
+
+          // NEW: Convert raw seconds to mm:ss
+          const durationInSec = parseInt(recording.recording_duration, 10);
+          const duration = isNaN(durationInSec)
+            ? "Unknown duration"
+            : `${Math.floor(durationInSec / 60)}:${(durationInSec % 60)
+                .toString()
+                .padStart(2, "0")}`;
+          // Get recording URL from your specific property
+          const recordingUrl = recording.recording_url;
+
+          return `
           <div class="recording-item" data-index="${index}">
             <div class="recording-header">
               <div class="recording-name">${fileName}</div>
@@ -224,44 +243,55 @@ displayRecordings(responseData) {
             </div>
           </div>
         `;
-      })
-      .join("");
+        })
+        .join("");
 
-    this.recordingsContainer.innerHTML = recordingsHTML;
+      this.recordingsContainer.innerHTML = recordingsHTML;
 
-    // Add event listeners for download buttons (AFTER HTML is set)
-    const downloadButtons = this.recordingsContainer.querySelectorAll(".recording-btn.download");
-    downloadButtons.forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const recordingUrl = e.target.getAttribute("data-recording-url");
-        const recordingIndex = e.target.getAttribute("data-recording-index");
-        
-        console.log('Clicked download button with URL:', recordingUrl); // Debug log
-        
-        if (recordingUrl && recordingUrl !== 'undefined' && recordingUrl !== 'null' && recordingUrl !== '') {
-          // Open recording URL in new tab
-          window.open(recordingUrl, '_blank', 'noopener,noreferrer');
-        } else {
-          console.error("No valid recording URL found for index:", recordingIndex);
-          // Fallback: try to get URL directly from recordings array
-          const fallbackUrl = recordings[recordingIndex]?.recording_url;
-          if (fallbackUrl && fallbackUrl.startsWith('http')) {
-            window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      // Add event listeners for download buttons (AFTER HTML is set)
+      const downloadButtons = this.recordingsContainer.querySelectorAll(
+        ".recording-btn.download"
+      );
+      downloadButtons.forEach((button) => {
+        button.addEventListener("click", (e) => {
+          const recordingUrl = e.target.getAttribute("data-recording-url");
+          const recordingIndex = e.target.getAttribute("data-recording-index");
+
+          console.log("Clicked download button with URL:", recordingUrl); // Debug log
+
+          if (
+            recordingUrl &&
+            recordingUrl !== "undefined" &&
+            recordingUrl !== "null" &&
+            recordingUrl !== ""
+          ) {
+            // Open recording URL in new tab
+            window.open(recordingUrl, "_blank", "noopener,noreferrer");
           } else {
-            alert("Recording URL not available");
+            console.error(
+              "No valid recording URL found for index:",
+              recordingIndex
+            );
+            // Fallback: try to get URL directly from recordings array
+            const fallbackUrl = recordings[recordingIndex]?.recording_url;
+            if (fallbackUrl && fallbackUrl.startsWith("http")) {
+              window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+            } else {
+              alert("Recording URL not available");
+            }
           }
-        }
+        });
       });
-    });
 
-    // Log recording count for debugging
-    console.log(`Displayed ${recordings.length} recordings from user ${response.userId}`);
-    
-  } catch (error) {
-    console.error("Error displaying recordings:", error);
-    this.showRecordingsError("Error displaying recordings");
+      // Log recording count for debugging
+      console.log(
+        `Displayed ${recordings.length} recordings from user ${response.userId}`
+      );
+    } catch (error) {
+      console.error("Error displaying recordings:", error);
+      this.showRecordingsError("Error displaying recordings");
+    }
   }
-}
   // Show recordings loading state
   showRecordingsLoading() {
     this.recordingsContainer.innerHTML = `

@@ -786,27 +786,26 @@ async validateCurrentTab() {
       };
     }
 
-    // Check if it's a Google Meet page (recommended)
-    const isMeetPage = currentTab.url.includes('meet.google.com');
+    // // Check if it's a Google Meet page (recommended)
+    // const isMeetPage = currentTab.url.includes('meet.google.com');
     
-    if (!isMeetPage) {
-      // Show warning but allow recording
-      console.warn('Current tab is not a Google Meet page:', currentTab.url);
+    // if (!isMeetPage) {
+    //   // Show warning but allow recording
+    //   console.warn('Current tab is not a Google Meet page:', currentTab.url);
       
-      // You could show a confirmation dialog here
-      const shouldContinue = confirm(
-        `You're about to record: "${currentTab.title}"\n\n` +
-        `This doesn't appear to be a Google Meet page. Continue anyway?`
-      );
+    //   // You could show a confirmation dialog here
+    //   const shouldContinue = confirm(
+    //     `You're about to record: "${currentTab.title}"\n\n` +
+    //     `This doesn't appear to be a Google Meet page. Continue anyway?`
+    //   );
       
-      if (!shouldContinue) {
-        return {
-          success: false,
-          error: 'Recording cancelled by user.'
-        };
-      }
-    }
-
+    //   if (!shouldContinue) {
+    //     return {
+    //       success: false,
+    //       error: 'Recording cancelled by user.'
+    //     };
+    //   }
+    // }
     // Additional validation: Check if tab has content
     if (!currentTab.url || currentTab.url === 'about:blank') {
       return {
@@ -818,7 +817,7 @@ async validateCurrentTab() {
     return {
       success: true,
       tab: currentTab,
-      isMeetPage: isMeetPage
+      isMeetPage: true
     };
 
   } catch (error) {

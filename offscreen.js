@@ -509,8 +509,6 @@ async createTabCombinedStreamWithAudio(streamId, options) {
       }, 500);
       
       console.log('🎉 ALL video and audio streams AGGRESSIVELY released!');
-      console.log('📱 Chrome capture indicator should disappear');
-      console.log('🔊 Device audio should resume normal playback');
       
       // 8. Send confirmation that ALL streams are released
       chrome.runtime.sendMessage({

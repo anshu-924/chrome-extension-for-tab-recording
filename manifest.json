@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Google Meet Recorder",
+  "name": "Vocal Meet - Free AI Notetaker",
   "version": "1.0.0",
   "description": "Record Google Meet sessions with tab and screen capture support",
   
@@ -26,15 +26,7 @@
     "service_worker": "background.js"
   },
   
-  "content_scripts": [
-    {
-      "matches": ["*://meet.google.com/*"],
-      "js": ["content/meet-injector.js"],
-      "css": ["content/content.css"],
-      "run_at": "document_start"
-    }
-  ],
-  
+
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "Google Meet Recorder",
