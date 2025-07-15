@@ -461,7 +461,7 @@ class MeetRecorderPopup {
       // Get current recording state from background
       const response = await chrome.runtime.sendMessage({ action: 'getRecordingState' });
       this.recordingState = response;
-      
+      console.log('found state: ', response.isRecording);
       // Load saved settings
       await this.loadSettings();
       
@@ -744,6 +744,10 @@ async startRecording() {
     if (response.success) {
       // Background will send state change, which will update UI
       console.log('Recording started successfully');
+      //close window after 2 seconds
+      setTimeout(() => {
+        window.close();
+      }, 2000);
     } else {
       this.showError(response.error || 'Failed to start recording');
     }
@@ -785,28 +789,6 @@ async validateCurrentTab() {
         error: 'Cannot record Chrome internal pages. Please navigate to a regular webpage (like Google Meet) and try again.'
       };
     }
-
-    // // Check if it's a Google Meet page (recommended)
-    // const isMeetPage = currentTab.url.includes('meet.google.com');
-    
-    // if (!isMeetPage) {
-    //   // Show warning but allow recording
-    //   console.warn('Current tab is not a Google Meet page:', currentTab.url);
-      
-    //   // You could show a confirmation dialog here
-    //   const shouldContinue = confirm(
-    //     `You're about to record: "${currentTab.title}"\n\n` +
-    //     `This doesn't appear to be a Google Meet page. Continue anyway?`
-    //   );
-      
-    //   if (!shouldContinue) {
-    //     return {
-    //       success: false,
-    //       error: 'Recording cancelled by user.'
-    //     };
-    //   }
-    // }
-    // Additional validation: Check if tab has content
     if (!currentTab.url || currentTab.url === 'about:blank') {
       return {
         success: false,
@@ -876,7 +858,7 @@ async validateCurrentTab() {
           `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         
         // Estimate file size (rough calculation)
-        const estimatedMB = Math.floor(elapsed / 1000 * 0.8); // ~0.8MB per second
+        const estimatedMB = Math.floor(elapsed / 1000 * 0.2); // ~0.8MB per second
         this.recordingSizeDisplay.textContent = `~${estimatedMB} MB`;
       }
     }, 1000);
@@ -890,6 +872,7 @@ async validateCurrentTab() {
   }
 
   startNewRecording() {
+    console.log('Starting new recording is setting false...');
     this.recordingState = {
       isRecording: false,
       recordingType: null,

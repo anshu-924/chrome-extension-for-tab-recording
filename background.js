@@ -1,6 +1,5 @@
 // Background Service Worker for Google Meet Recorder with Authentication and Audio Support
-
-let recordingState = {
+const DEFAULT_RECORDING_STATE = {
   isRecording: false,
   isPaused: false,
   recordingType: null,
@@ -8,6 +7,40 @@ let recordingState = {
   recordingStartTime: null,
   recordingData: null,
 };
+
+// Get recording state from storage
+async function getRecordingState() {
+  try {
+    const result = await chrome.storage.local.get(["recordingState"]);
+    return result.recordingState || DEFAULT_RECORDING_STATE;
+  } catch (error) {
+    console.error("Error getting recording state:", error);
+    return DEFAULT_RECORDING_STATE;
+  }
+}
+
+// Set recording state in storage
+async function setRecordingState(newState) {
+  try {
+    await chrome.storage.local.set({ recordingState: newState });
+    console.log("Recording state saved:", newState);
+  } catch (error) {
+    console.error("Error saving recording state:", error);
+  }
+}
+
+// Update specific recording state properties
+async function updateRecordingState(updates) {
+  try {
+    const currentState = await getRecordingState();
+    const newState = { ...currentState, ...updates };
+    await setRecordingState(newState);
+    return newState;
+  } catch (error) {
+    console.error("Error updating recording state:", error);
+    return currentState;
+  }
+}
 
 let refreshTimeout = null;
 let refreshRetryCount = 0;
@@ -78,14 +111,15 @@ async function handleLogoutAPI(refreshToken, sendResponse) {
     console.log("Background: Calling logout API");
 
     // Get auth token and user_id from storage for the API call
-    const result = await chrome.storage.local.get(['auth_token', 'user_id']);
-    
+    const result = await chrome.storage.local.get(["auth_token", "user_id"]);
+
     if (!result.auth_token || !result.user_id) {
       console.warn("Background: Missing auth_token or user_id for logout API");
       // Don't fail the logout process, just continue with local logout
       sendResponse({
         success: true,
-        warning: "Missing authentication data for logout API, proceeding with local logout"
+        warning:
+          "Missing authentication data for logout API, proceeding with local logout",
       });
       return;
     }
@@ -94,7 +128,7 @@ async function handleLogoutAPI(refreshToken, sendResponse) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${result.auth_token}`
+        Authorization: `Bearer ${result.auth_token}`,
       },
       body: JSON.stringify({
         query: `
@@ -107,9 +141,9 @@ async function handleLogoutAPI(refreshToken, sendResponse) {
         variables: {
           request: {
             refresh_token: refreshToken,
-            user_id: result.user_id
-          }
-        }
+            user_id: result.user_id,
+          },
+        },
       }),
     });
 
@@ -291,7 +325,7 @@ async function handleVerifyOTP(phone, otp, sendResponse) {
 }
 
 // Handle extension installation
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log("Google Meet Recorder Extension installed");
 
   // Initialize storage with default settings
@@ -302,13 +336,22 @@ chrome.runtime.onInstalled.addListener(() => {
     recordingFormat: "webm",
   });
 
+  // Initialize recording state
+  await setRecordingState(DEFAULT_RECORDING_STATE);
+
   // Schedule token refresh check
   scheduleTokenRefresh();
 });
 
 // Handle extension startup
-chrome.runtime.onStartup.addListener(() => {
+chrome.runtime.onStartup.addListener(async () => {
   console.log("Google Meet Recorder Extension started");
+
+  // Initialize recording state if not exists
+  const currentState = await getRecordingState();
+  if (!currentState.isRecording) {
+    await setRecordingState(DEFAULT_RECORDING_STATE);
+  }
 
   // Schedule token refresh check
   scheduleTokenRefresh();
@@ -507,8 +550,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   switch (message.action) {
     case "getRecordingState":
-      sendResponse(recordingState);
-      break;
+      getRecordingState()
+        .then((state) => {
+          sendResponse(state);
+        })
+        .catch((error) => {
+          console.error("Error getting recording state for popup:", error);
+          sendResponse(DEFAULT_RECORDING_STATE);
+        });
+      return true;
 
     // API Calls (moved from frontend to avoid CSP issues)
     case "getPhoneCodes":
@@ -682,14 +732,18 @@ function handleAuthEvent(eventType, data) {
 
 async function handleValidateUploadAuth(sendResponse) {
   try {
-    console.log('Background: Validating upload authentication');
-    
-    const result = await chrome.storage.local.get(['auth_token', 'refresh_token', 'user_id']);
-    
+    console.log("Background: Validating upload authentication");
+
+    const result = await chrome.storage.local.get([
+      "auth_token",
+      "refresh_token",
+      "user_id",
+    ]);
+
     if (!result.auth_token || !result.refresh_token || !result.user_id) {
-      sendResponse({ 
-        isValid: false, 
-        error: 'No authentication tokens found' 
+      sendResponse({
+        isValid: false,
+        error: "No authentication tokens found",
       });
       return;
     }
@@ -697,9 +751,9 @@ async function handleValidateUploadAuth(sendResponse) {
     // Parse and validate token
     const tokenData = parseJwt(result.auth_token);
     if (!tokenData || !tokenData.exp) {
-      sendResponse({ 
-        isValid: false, 
-        error: 'Invalid token format' 
+      sendResponse({
+        isValid: false,
+        error: "Invalid token format",
       });
       return;
     }
@@ -708,52 +762,57 @@ async function handleValidateUploadAuth(sendResponse) {
     const timeUntilExpiry = tokenData.exp - currentTime;
 
     // If token expires soon, try to refresh
-    if (timeUntilExpiry < 300) { // 5 minutes
-      console.log('Background: Token expiring soon, attempting refresh for upload');
-      
+    if (timeUntilExpiry < 300) {
+      // 5 minutes
+      console.log(
+        "Background: Token expiring soon, attempting refresh for upload"
+      );
+
       try {
-        const tokens = await refreshAuthToken(result.refresh_token, result.user_id);
+        const tokens = await refreshAuthToken(
+          result.refresh_token,
+          result.user_id
+        );
         updateTokens(tokens.auth_token, tokens.refresh_token);
-        
+
         sendResponse({
           isValid: true,
           refreshed: true,
-          message: 'Token refreshed for upload'
+          message: "Token refreshed for upload",
         });
       } catch (error) {
-        console.error('Background: Token refresh failed for upload:', error);
+        console.error("Background: Token refresh failed for upload:", error);
         sendResponse({
           isValid: false,
-          error: 'Token refresh failed'
+          error: "Token refresh failed",
         });
       }
     } else {
       sendResponse({
         isValid: true,
         expiresIn: timeUntilExpiry,
-        message: 'Authentication valid for upload'
+        message: "Authentication valid for upload",
       });
     }
-
   } catch (error) {
-    console.error('Background: Error validating upload auth:', error);
+    console.error("Background: Error validating upload auth:", error);
     sendResponse({
       isValid: false,
-      error: error.message
+      error: error.message,
     });
   }
 }
 
 async function handleGetUploadAuthContext(sendResponse) {
   try {
-    console.log('Background: Getting upload auth context');
-    
-    const result = await chrome.storage.local.get(['auth_token', 'user_id']);
-    
+    console.log("Background: Getting upload auth context");
+
+    const result = await chrome.storage.local.get(["auth_token", "user_id"]);
+
     if (!result.auth_token || !result.user_id) {
       sendResponse({
         success: false,
-        error: 'No authentication context available'
+        error: "No authentication context available",
       });
       return;
     }
@@ -763,7 +822,7 @@ async function handleGetUploadAuthContext(sendResponse) {
     if (!tokenData) {
       sendResponse({
         success: false,
-        error: 'Invalid token format'
+        error: "Invalid token format",
       });
       return;
     }
@@ -771,33 +830,32 @@ async function handleGetUploadAuthContext(sendResponse) {
     const authContext = {
       userId: result.user_id,
       authToken: result.auth_token,
-      phone: tokenData.phone || 'unknown',
+      phone: tokenData.phone || "unknown",
       email: tokenData.email || null,
       userInfo: {
         id: tokenData.id,
         phone: tokenData.phone,
         email: tokenData.email,
-        fullname: tokenData.fullname || 'User',
+        fullname: tokenData.fullname || "User",
         phone_verified: tokenData.phone_verified,
-        email_verified: tokenData.email_verified
-      }
+        email_verified: tokenData.email_verified,
+      },
     };
 
-    console.log('Background: Auth context prepared for upload:', {
+    console.log("Background: Auth context prepared for upload:", {
       userId: authContext.userId,
-      phone: authContext.phone
+      phone: authContext.phone,
     });
 
     sendResponse({
       success: true,
-      authContext: authContext
+      authContext: authContext,
     });
-
   } catch (error) {
-    console.error('Background: Error getting upload auth context:', error);
+    console.error("Background: Error getting upload auth context:", error);
     sendResponse({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 }
@@ -807,20 +865,23 @@ async function handleGetUserRecordings(sendResponse) {
     console.log("Background: Fetching user recordings from API...");
 
     // Get auth token from storage
-    const result = await chrome.storage.local.get(['auth_token']);
+    const result = await chrome.storage.local.get(["auth_token"]);
     if (!result.auth_token) {
-      throw new Error('No authentication token found');
+      throw new Error("No authentication token found");
     }
 
-    const response = await fetch("https://n8n.subspace.money/webhook/get-user-recordings", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        authToken: result.auth_token
-      }),
-    });
+    const response = await fetch(
+      "https://n8n.subspace.money/webhook/get-user-recordings",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          authToken: result.auth_token,
+        }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -832,13 +893,15 @@ async function handleGetUserRecordings(sendResponse) {
       throw new Error(data.error || "Failed to fetch recordings");
     }
 
-    console.log(`Background: Loaded ${data.recordings?.length || 0} recordings`);
+    console.log(
+      `Background: Loaded ${data.recordings?.length || 0} recordings`
+    );
 
     sendResponse({
       success: true,
       recordings: data.recordings || [],
       recordingsCount: data.recordingsCount || 0,
-      userId: data.userId
+      userId: data.userId,
     });
   } catch (error) {
     console.error("Background: Error loading recordings:", error);
@@ -851,54 +914,55 @@ async function handleGetUserRecordings(sendResponse) {
 
 function handleRecordingUploaded(message, sendResponse) {
   try {
-    console.log('Background: Recording uploaded successfully:', message);
-    
+    console.log("Background: Recording uploaded successfully:", message);
+
     // Store upload info for potential future use
     const uploadInfo = {
       recordingId: message.recordingId,
       s3Key: message.s3Key,
       uploadedAt: new Date().toISOString(),
       fileSize: message.fileSize,
-      duration: message.duration
+      duration: message.duration,
     };
 
     // Could store in local storage for history
-    chrome.storage.local.get(['uploadHistory'], (result) => {
+    chrome.storage.local.get(["uploadHistory"], (result) => {
       const history = result.uploadHistory || [];
       history.push(uploadInfo);
-      
+
       // Keep only last 50 uploads
       if (history.length > 50) {
         history.splice(0, history.length - 50);
       }
-      
+
       chrome.storage.local.set({ uploadHistory: history });
     });
 
     // Show success notification
-    chrome.notifications?.create({
-      type: 'basic',
-      iconUrl: 'icons/icon48.png',
-      title: 'Recording Uploaded',
-      message: `Audio recording uploaded to cloud successfully!`
-    }).catch(() => {
-      // Notifications might not be available
-    });
+    chrome.notifications
+      ?.create({
+        type: "basic",
+        iconUrl: "icons/icon48.png",
+        title: "Recording Uploaded",
+        message: `Audio recording uploaded to cloud successfully!`,
+      })
+      .catch(() => {
+        // Notifications might not be available
+      });
 
     // Update badge to show success (temporarily)
-    updateBadge('✓');
+    updateBadge("✓");
     setTimeout(() => {
-      updateBadge('');
+      updateBadge("");
     }, 3000);
 
-    console.log('Background: Upload notification handled');
-    
+    console.log("Background: Upload notification handled");
+
     if (sendResponse) {
       sendResponse({ received: true });
     }
-
   } catch (error) {
-    console.error('Background: Error handling upload notification:', error);
+    console.error("Background: Error handling upload notification:", error);
   }
 }
 
@@ -966,7 +1030,9 @@ async function handleRefreshTokenRequest(sendResponse) {
 // Start recording based on options
 async function handleStartRecording(options, sendResponse) {
   try {
-    if (recordingState.isRecording) {
+    const currentState = await getRecordingState();
+
+    if (currentState.isRecording) {
       sendResponse({ success: false, error: "Recording already in progress" });
       return;
     }
@@ -996,14 +1062,14 @@ async function handleStartRecording(options, sendResponse) {
     await createOffscreenDocument();
 
     // Update recording state first
-    recordingState = {
+    await setRecordingState({
       isRecording: false, // Will be set to true after successful start
       isPaused: false,
       recordingType: options.recordingType,
       currentTabId: options.tabId,
       recordingStartTime: null, // Will be set after start
       recordingData: null,
-    };
+    });
 
     // Store recording options
     await chrome.storage.session.set({ currentRecordingOptions: options });
@@ -1013,11 +1079,14 @@ async function handleStartRecording(options, sendResponse) {
     const result = await startTabRecording(options);
 
     if (result.success) {
-      recordingState.isRecording = true;
-      recordingState.recordingStartTime = Date.now();
+      await updateRecordingState({
+        isRecording: true,
+        recordingStartTime: Date.now(),
+      });
+
       updateBadge("REC");
       notifyPopupStateChange();
-      
+
       console.log("Recording started successfully");
       sendResponse({
         success: true,
@@ -1025,18 +1094,18 @@ async function handleStartRecording(options, sendResponse) {
       });
     } else {
       console.error("Failed to start recording:", result.error);
-      resetRecordingState();
-      sendResponse({ 
-        success: false, 
-        error: result.error 
+      await resetRecordingState();
+      sendResponse({
+        success: false,
+        error: result.error,
       });
     }
   } catch (error) {
     console.error("Error in handleStartRecording:", error);
-    resetRecordingState();
-    sendResponse({ 
-      success: false, 
-      error: `Recording failed: ${error.message}` 
+    await resetRecordingState();
+    sendResponse({
+      success: false,
+      error: `Recording failed: ${error.message}`,
     });
   }
 }
@@ -1055,24 +1124,28 @@ async function startTabRecording(options) {
         id: targetTab.id,
         url: targetTab.url,
         title: targetTab.title,
-        active: targetTab.active
+        active: targetTab.active,
       });
     } catch (tabError) {
       console.error("Failed to get tab details:", tabError);
       return {
         success: false,
-        error: "Cannot access the target tab. Please ensure the tab is still open and try again."
+        error:
+          "Cannot access the target tab. Please ensure the tab is still open and try again.",
       };
     }
 
     // Step 2: Validate tab is not a Chrome internal page
-    if (targetTab.url.startsWith('chrome://') || 
-        targetTab.url.startsWith('chrome-extension://') ||
-        targetTab.url.startsWith('edge://') ||
-        targetTab.url.startsWith('about:')) {
+    if (
+      targetTab.url.startsWith("chrome://") ||
+      targetTab.url.startsWith("chrome-extension://") ||
+      targetTab.url.startsWith("edge://") ||
+      targetTab.url.startsWith("about:")
+    ) {
       return {
         success: false,
-        error: "Cannot record Chrome internal pages. Please navigate to a regular webpage and try again."
+        error:
+          "Cannot record Chrome internal pages. Please navigate to a regular webpage and try again.",
       };
     }
 
@@ -1082,12 +1155,13 @@ async function startTabRecording(options) {
       try {
         await chrome.tabs.update(options.tabId, { active: true });
         // Wait a moment for tab to become active
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (switchError) {
         console.error("Failed to switch to target tab:", switchError);
         return {
           success: false,
-          error: "Cannot switch to the target tab. Please click on the tab you want to record and try again."
+          error:
+            "Cannot switch to the target tab. Please click on the tab you want to record and try again.",
         };
       }
     }
@@ -1095,26 +1169,31 @@ async function startTabRecording(options) {
     // Step 4: Get the media stream ID with enhanced error handling
     let streamId;
     try {
-      console.log("from background.js Requesting media stream ID for tab :", options.tabId);
-      
+      console.log(
+        "from background.js Requesting media stream ID for tab :",
+        options.tabId
+      );
+
       streamId = await chrome.tabCapture.getMediaStreamId({
         targetTabId: options.tabId,
       });
-      
+
       console.log("in background.js Got Tab stream ID:", streamId);
-      
+
       if (!streamId) {
-        throw new Error("Failed to get stream ID - the extension may not have been invoked on this tab");
+        throw new Error(
+          "Failed to get stream ID - the extension may not have been invoked on this tab"
+        );
       }
-      
     } catch (streamError) {
       console.error("Tab capture stream ID error:", streamError);
-      
+
       // Provide specific error messages based on the error
       let errorMessage = "Failed to start recording. ";
-      
+
       if (streamError.message.includes("not been invoked")) {
-        errorMessage += "Please try to start the extension from the icon in the extensions section.";
+        errorMessage +=
+          "Please try to start the extension from the icon in the extensions section.";
       } else if (streamError.message.includes("Chrome pages")) {
         errorMessage += "Cannot record Chrome internal pages.";
       } else if (streamError.message.includes("permission")) {
@@ -1122,10 +1201,10 @@ async function startTabRecording(options) {
       } else {
         errorMessage += streamError.message;
       }
-      
+
       return {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       };
     }
 
@@ -1135,12 +1214,15 @@ async function startTabRecording(options) {
         {
           action: "startTabRecording",
           target: "offscreen",
-          streamId: streamId, 
+          streamId: streamId,
           options: options,
         },
         (response) => {
           if (chrome.runtime.lastError) {
-            console.error("Error sending to offscreen:", chrome.runtime.lastError);
+            console.error(
+              "Error sending to offscreen:",
+              chrome.runtime.lastError
+            );
             resolve({
               success: false,
               error: `Offscreen communication error: ${chrome.runtime.lastError.message}`,
@@ -1157,12 +1239,11 @@ async function startTabRecording(options) {
         }
       );
     });
-    
   } catch (error) {
     console.error("Tab recording error:", error);
-    return { 
-      success: false, 
-      error: `Recording setup failed: ${error.message}` 
+    return {
+      success: false,
+      error: `Recording setup failed: ${error.message}`,
     };
   }
 }
@@ -1170,7 +1251,9 @@ async function startTabRecording(options) {
 // Stop recording
 async function handleStopRecording(sendResponse) {
   try {
-    if (!recordingState.isRecording) {
+    const currentState = await getRecordingState();
+
+    if (!currentState.isRecording) {
       sendResponse({ success: false, error: "No recording in progress" });
       return;
     }
@@ -1188,8 +1271,10 @@ async function handleStopRecording(sendResponse) {
     });
 
     if (response.success) {
-      recordingState.recordingData = response.recordingData;
-      resetRecordingState();
+      await updateRecordingState({
+        recordingData: response.recordingData,
+      });
+      await resetRecordingState();
       updateBadge("");
       notifyPopupStateChange();
       sendResponse({
@@ -1432,70 +1517,81 @@ function handleMicrophoneAccessFailed(message, sender) {
     });
 }
 
-
 // Handle recording completion from offscreen document
 function handleRecordingComplete(message, sender) {
-  console.log('Recording completed:', message.recordingData);
-  
+  console.log("Recording completed:", message.recordingData);
+
   // Validate recording data structure
   const recordingData = message.recordingData;
-  
+
   if (!recordingData || !recordingData.url) {
-    console.error('Invalid recording data received');
-    handleRecordingError({ error: 'Invalid recording data received' }, sender);
+    console.error("Invalid recording data received");
+    handleRecordingError({ error: "Invalid recording data received" }, sender);
     return;
   }
-  
+
   // Log recording details including audio data
-  console.log('Recording details:', {
-    videoSize: recordingData.size ? `${(recordingData.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown',
-    audioSize: recordingData.audioSize ? `${(recordingData.audioSize / 1024 / 1024).toFixed(2)} MB` : 'No audio',
-    duration: recordingData.duration ? `${recordingData.duration.toFixed(1)}s` : 'Unknown',
-    hasAudio: !!recordingData.audioUrl
+  console.log("Recording details:", {
+    videoSize: recordingData.size
+      ? `${(recordingData.size / 1024 / 1024).toFixed(2)} MB`
+      : "Unknown",
+    audioSize: recordingData.audioSize
+      ? `${(recordingData.audioSize / 1024 / 1024).toFixed(2)} MB`
+      : "No audio",
+    duration: recordingData.duration
+      ? `${recordingData.duration.toFixed(1)}s`
+      : "Unknown",
+    hasAudio: !!recordingData.audioUrl,
   });
-  
+
   // Update recording state
-  recordingState.recordingData = recordingData;
-  recordingState.isRecording = false;
-  recordingState.isPaused = false;
-  
-  // Clear badge
-  updateBadge('');
-  
-  // Store recording data for preview tab with upload context
-  chrome.storage.session.set({ 
+  updateRecordingState({
     recordingData: recordingData,
-    canUpload: !!recordingData.audioUrl && recordingData.audioSize > 0
+    isRecording: false,
+    isPaused: false,
   });
-  
+
+  // Clear badge
+  updateBadge("");
+
+  // Store recording data for preview tab with upload context
+  chrome.storage.session.set({
+    recordingData: recordingData,
+    canUpload: !!recordingData.audioUrl && recordingData.audioSize > 0,
+  });
+
   // Add upload readiness check
-  chrome.storage.local.get(['auth_token', 'user_id'], (result) => {
-    const uploadReady = !!(result.auth_token && result.user_id && recordingData.audioUrl);
-    
-    chrome.storage.session.set({ 
-      uploadReady: uploadReady 
+  chrome.storage.local.get(["auth_token", "user_id"], (result) => {
+    const uploadReady = !!(
+      result.auth_token &&
+      result.user_id &&
+      recordingData.audioUrl
+    );
+
+    chrome.storage.session.set({
+      uploadReady: uploadReady,
     });
-    
-    console.log('Upload readiness:', uploadReady);
+
+    console.log("Upload readiness:", uploadReady);
   });
-  
+
   // Open preview tab
   chrome.tabs.create({
-    url: chrome.runtime.getURL('preview.html')
+    url: chrome.runtime.getURL("preview.html"),
   });
-  
+
   // Notify popup about completion
   notifyPopupStateChange();
-  
-  console.log('Recording completion handled successfully with upload support');
+
+  console.log("Recording completion handled successfully with upload support");
 }
 function cleanupUploadData() {
   try {
     // Clean up any temporary upload data
-    chrome.storage.session.remove(['uploadReady', 'canUpload']);
-    console.log('Upload data cleaned up');
+    chrome.storage.session.remove(["uploadReady", "canUpload"]);
+    console.log("Upload data cleaned up");
   } catch (error) {
-    console.error('Error cleaning upload data:', error);
+    console.error("Error cleaning upload data:", error);
   }
 }
 function trackUploadEvent(eventType, data = {}) {
@@ -1503,27 +1599,26 @@ function trackUploadEvent(eventType, data = {}) {
     const event = {
       type: eventType,
       timestamp: new Date().toISOString(),
-      data: data
+      data: data,
     };
-    
+
     // Could send to analytics service or store locally
-    console.log('Upload event:', event);
-    
+    console.log("Upload event:", event);
+
     // Store in session for debugging
-    chrome.storage.session.get(['uploadEvents'], (result) => {
+    chrome.storage.session.get(["uploadEvents"], (result) => {
       const events = result.uploadEvents || [];
       events.push(event);
-      
+
       // Keep only last 20 events
       if (events.length > 20) {
         events.splice(0, events.length - 20);
       }
-      
+
       chrome.storage.session.set({ uploadEvents: events });
     });
-    
   } catch (error) {
-    console.error('Error tracking upload event:', error);
+    console.error("Error tracking upload event:", error);
   }
 }
 function enhancedCleanup() {
@@ -1556,30 +1651,35 @@ function handleRecordingError(message, sender) {
 
 // Handle tab closing during recording
 function handleTabClosing(tabId) {
-  if (recordingState.isRecording && recordingState.currentTabId === tabId) {
-    console.log("Recording tab is closing, stopping recording...");
+  getRecordingState().then((currentState) => {
+    if (currentState.isRecording && currentState.currentTabId === tabId) {
+      console.log("Recording tab is closing, stopping recording...");
 
-    // Stop recording automatically
-    chrome.runtime
-      .sendMessage({ action: "stopRecording" })
-      .then(() => {
-        resetRecordingState();
-        updateBadge("");
-      })
-      .catch(console.error);
-  }
+      // Stop recording automatically
+      chrome.runtime
+        .sendMessage({ action: "stopRecording" })
+        .then(() => {
+          resetRecordingState();
+          updateBadge("");
+        })
+        .catch(console.error);
+    }
+  });
 }
 
 // Reset recording state
-function resetRecordingState() {
-  recordingState = {
+async function resetRecordingState() {
+  console.log("reset recording state is setting false...");
+
+  const currentState = await getRecordingState();
+  await setRecordingState({
     isRecording: false,
     isPaused: false,
     recordingType: null,
     currentTabId: null,
     recordingStartTime: null,
-    recordingData: recordingState.recordingData, // Keep recording data
-  };
+    recordingData: currentState.recordingData, // Keep recording data
+  });
 }
 
 // Update extension badge
@@ -1594,15 +1694,20 @@ function updateBadge(text) {
 }
 
 // Notify popup about state changes
-function notifyPopupStateChange() {
-  chrome.runtime
-    .sendMessage({
-      action: "recordingStateChanged",
-      state: recordingState,
-    })
-    .catch(() => {
-      // Popup might not be open, ignore error
-    });
+async function notifyPopupStateChange() {
+  try {
+    const currentState = await getRecordingState();
+    chrome.runtime
+      .sendMessage({
+        action: "recordingStateChanged",
+        state: currentState,
+      })
+      .catch(() => {
+        // Popup might not be open, ignore error
+      });
+  } catch (error) {
+    console.error("Error notifying popup state change:", error);
+  }
 }
 
 // Handle tab removal
@@ -1611,13 +1716,13 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
 });
 
 // Handle tab navigation away from Meet
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (
-    changeInfo.url &&
-    recordingState.isRecording &&
-    recordingState.currentTabId === tabId
-  ) {
-    // Check if navigating away from a Meet session
-    console.log(`Recording tab navigated to: ${changeInfo.url}`);
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.url) {
+    const currentState = await getRecordingState();
+
+    if (currentState.isRecording && currentState.currentTabId === tabId) {
+      // Check if navigating away from a Meet session
+      console.log(`Recording tab navigated to: ${changeInfo.url}`);
+    }
   }
 });

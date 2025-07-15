@@ -217,10 +217,7 @@ class UserProfileController {
               <div class="recording-date">${uploadDate}</div>
             </div>
             <div class="recording-details">
-              <div class="recording-detail">
-                <span>📁</span>
-                <span>${fileSize}</span>
-              </div>
+              
               ${
                 duration
                   ? `
@@ -233,7 +230,7 @@ class UserProfileController {
               }
               <div class="recording-detail">
                 <span>🏷️</span>
-                <span>WebM Audio</span>
+                <span>Audio file mp4/webm</span>
               </div>
             </div>
             <div class="recording-actions">

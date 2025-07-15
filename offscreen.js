@@ -642,11 +642,13 @@ async createTabCombinedStreamWithAudio(streamId, options) {
 
   getSupportedMimeType() {
     const types = [
-      'video/webm;codecs=vp9,opus',
+      'video/mp4;codecs=h264,aac',           
+      'video/mp4;codecs=avc1.424028,mp4a.40.2',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',          
       'video/webm;codecs=vp8,opus',
       'video/webm;codecs=h264,opus',
-      'video/webm',
-      'video/mp4'
+      'video/webm'
     ];
     
     for (const type of types) {
@@ -660,11 +662,11 @@ async createTabCombinedStreamWithAudio(streamId, options) {
 
   getSupportedAudioMimeType() {
     const types = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
+      'audio/mp4;codecs=mp4a.40.2',          
       'audio/mp4',
-      'audio/wav'
+      'audio/webm;codecs=opus',              
+      'audio/webm',
+      'audio/ogg;codecs=opus'
     ];
     
     for (const type of types) {
